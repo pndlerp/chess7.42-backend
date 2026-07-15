@@ -1,2 +1,2 @@
 # chess7.42
-человекослоп и нейроискусство
+humanslop and artificialmasterpiece
