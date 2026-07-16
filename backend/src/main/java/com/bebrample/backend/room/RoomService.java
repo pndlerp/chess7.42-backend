@@ -6,6 +6,7 @@ import com.bebrample.backend.user.User;
 import com.bebrample.backend.user.UserRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,8 @@ import org.springframework.stereotype.Service;
 public class RoomService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+
+    private final SimpMessagingTemplate simpMessagingTemplate;
     @Transactional
     public Long createRoom(){
             String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -40,6 +43,12 @@ public class RoomService {
         if(room.getFirstPlayer().equals(user)) throw new RoomAlreadyFullException("cant be same player");
         if(room.getSecondPlayer() != null) throw new RoomAlreadyFullException("room already full");
         room.setSecondPlayer(user);
-        return roomRepository.save(room);
+
+        Room savedRoom = roomRepository.save(room);
+
+        simpMessagingTemplate.convertAndSend("/topic/room/" + roomId, savedRoom);
+
+        return savedRoom;
     }
+
 }
