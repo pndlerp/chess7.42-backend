@@ -20,7 +20,7 @@ public class UserRest {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> logintoAccount(@RequestBody UserCreateDto dto){
+    public ResponseEntity<String> loginToAccount(@RequestBody UserCreateDto dto){
         String token = userLoginDetailsService.login(dto);
 
         return ResponseEntity.ok(token);
