@@ -1,12 +1,16 @@
 package com.bebrample.backend.user;
 
+import com.bebrample.backend.common.exception.ResourcesNotFoundException;
 import com.bebrample.backend.common.security.JwtService;
+import com.bebrample.backend.user.dto.UserCreateDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
 
+@Service
 @RequiredArgsConstructor
 public class UserLoginDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
@@ -16,7 +20,7 @@ public class UserLoginDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findUserByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Username not found!"));
+                .orElseThrow(() -> new UsernameNotFoundException("Username not found!"));
 
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
@@ -25,11 +29,12 @@ public class UserLoginDetailsService implements UserDetailsService {
                 .build();
     }
 
-    public String login(User user){
-        User user1 = userRepository.findUserById(user.getId());
+    public String login(UserCreateDto user){
+        User user1 = userRepository.findUserByUsername(user.getUsername())
+                .orElseThrow(() -> new ResourcesNotFoundException("User not found"));
 
         if(!passwordEncoder.matches(user.getPassword(), user1.getPassword())){
-            throw new RuntimeException("wrong password");
+            throw new ResourcesNotFoundException("Wrong Password");
         }
         return jwtService.generateToken(user1.getUsername());
     }
