@@ -1,0 +1,17 @@
+services:
+
+  # PostgreSQL: The world's most advanced open source database.
+  postgres:
+    image: postgres:15-alpine
+    container_name: chess_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - chessdata:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=bebra
+      - POSTGRES_PASSWORD=bebra123456789
+      - POSTGRES_DB=chess_backend
+
+volumes:
+  chessdata:
