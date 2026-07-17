@@ -1,7 +1,7 @@
 package com.bebrample.backend.room;
 
 import com.bebrample.backend.common.exception.ResourcesNotFoundException;
-import com.bebrample.backend.common.exception.RoomAlreadyFullException;
+import com.bebrample.backend.common.exception.RoomException;
 import com.bebrample.backend.user.User;
 import com.bebrample.backend.user.UserRepository;
 import jakarta.transaction.Transactional;
@@ -40,15 +40,19 @@ public class RoomService {
         User user = userRepository.findUserByUsername(currentUsername).orElseThrow(() ->
                 new ResourcesNotFoundException("i dunno how this could happened"));
 
-        if(room.getFirstPlayer().equals(user)) throw new RoomAlreadyFullException("cant be same player");
-        if(room.getSecondPlayer() != null) throw new RoomAlreadyFullException("room already full");
+        if(room.getFirstPlayer().equals(user)) throw new RoomException("cant be same player");
+        if(room.getSecondPlayer() != null) throw new RoomException("room already full");
         room.setSecondPlayer(user);
 
         Room savedRoom = roomRepository.save(room);
 
-        simpMessagingTemplate.convertAndSend("/topic/room/" + roomId, savedRoom);
+        simpMessagingTemplate.convertAndSend("/topic/room/1" + roomId, savedRoom);
 
         return savedRoom;
+    }
+
+    public void sendMessage(){
+        simpMessagingTemplate.convertAndSend("topic/room/1", "server here");
     }
 
 }

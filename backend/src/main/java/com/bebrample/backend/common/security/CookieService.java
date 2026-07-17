@@ -24,7 +24,7 @@ public class CookieService {
         return cookie;
     }
 
-    public void deleteCookie(){
+    public ResponseCookie deleteCookie(){
         ResponseCookie cookie = ResponseCookie.from("access_token", "")
                 .httpOnly(true)
                 .secure(false)
@@ -32,5 +32,6 @@ public class CookieService {
                 .path("/")
                 .maxAge(0)
                 .build();
+        return cookie;
     }
 }
