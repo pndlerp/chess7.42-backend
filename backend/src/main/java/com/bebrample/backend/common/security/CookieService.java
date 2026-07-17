@@ -1,0 +1,36 @@
+package com.bebrample.backend.common.security;
+
+import com.bebrample.backend.user.User;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseCookie;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+
+@Service
+@RequiredArgsConstructor
+public class CookieService {
+
+    private final JwtService jwtService;
+
+    public ResponseCookie createCookie(String jwt){
+        ResponseCookie cookie = ResponseCookie.from("access_token", jwt)
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(Duration.ofHours(24))
+                .build();
+        return cookie;
+    }
+
+    public void deleteCookie(){
+        ResponseCookie cookie = ResponseCookie.from("access_token", "")
+                .httpOnly(true)
+                .secure(false)
+                .sameSite("Strict")
+                .path("/")
+                .maxAge(0)
+                .build();
+    }
+}
