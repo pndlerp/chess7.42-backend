@@ -13,5 +13,15 @@ services:
       - POSTGRES_PASSWORD=bebra123456789
       - POSTGRES_DB=chess_backend
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - chessredisdata:/data
+
 volumes:
   chessdata:
+  chessredisdata:
