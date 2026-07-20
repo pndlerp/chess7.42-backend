@@ -1,7 +1,7 @@
 package com.bebrample.backend.room;
 
 import com.bebrample.backend.entity.GameCondition;
-import com.bebrample.backend.user.User;
+import com.bebrample.backend.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 

@@ -1,6 +1,5 @@
 package com.bebrample.backend.common.security;
 
-import com.bebrample.backend.user.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
@@ -10,8 +9,6 @@ import java.time.Duration;
 @Service
 @RequiredArgsConstructor
 public class CookieService {
-
-    private final JwtService jwtService;
 
     public ResponseCookie createCookie(String jwt){
         ResponseCookie cookie = ResponseCookie.from("access_token", jwt)
