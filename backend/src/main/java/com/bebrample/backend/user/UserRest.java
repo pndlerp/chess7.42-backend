@@ -43,4 +43,12 @@ public class UserRest {
         return ResponseEntity.ok("ok");
     }
 
+    @PostMapping("/anonymous")
+    public ResponseEntity<String> createAnonymousAccount(HttpServletResponse response){
+        String jwt = userService.createGuest();
+        ResponseCookie cookie = cookieService.createCookie(jwt);
+        response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        return ResponseEntity.ok("ok");
+    }
+
 }

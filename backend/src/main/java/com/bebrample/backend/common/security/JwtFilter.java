@@ -1,12 +1,20 @@
 package com.bebrample.backend.common.security;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
+import com.bebrample.backend.common.exception.ResourcesNotFoundException;
 import com.bebrample.backend.user.UserAuthService;
+import com.bebrample.backend.user.UserRepository;
+import com.bebrample.backend.user.entity.Guest;
+import com.bebrample.backend.user.entity.LobbyParticipant;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -15,35 +23,45 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserAuthService userAuthService;
+    private final UserRepository userRepository;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
                                     throws ServletException, IOException {
         Cookie[] cookies = request.getCookies();
-        String username = null;
-        String jwt;
+        String token = null;
 
         if (cookies != null) {
             for (Cookie cookie : cookies) {
                 if (cookie.getName().equals("access_token")) {
-                    jwt = cookie.getValue();
-                    username = jwtService.getUsernameAndVerify(jwt);
+                    token = cookie.getValue();
                 }
             }
 
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (token != null && jwtService.verifyToken(token)) {
+                DecodedJWT decodedJWT = JWT.decode(token);
+                String idStr = decodedJWT.getSubject();
+                Long id = Long.parseLong(idStr);
+                String username = decodedJWT.getClaim("username").asString();
+                String role = decodedJWT.getClaim("role").asString();
 
-                UserDetails userDetails = userAuthService.loadUserByUsername(username);
+                LobbyParticipant participant;
+                participant = new Guest(id, username);
+
+
+                 List<GrantedAuthority> authorities = AuthorityUtils.createAuthorityList(role);
+
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                        userDetails, null, userDetails.getAuthorities());
+                        participant, null, authorities);
 
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }

@@ -16,19 +16,21 @@ public class JwtService {
 
     private final long expirationMs = 86400000;
 
-    public String generateToken(String username){
+    public String generateToken(String id, String username, String role) {
         return JWT.create()
-                .withSubject(username)
+                .withSubject(id)
+                .withClaim("username", username)
+                .withClaim("role", role)
                 .withIssuedAt(new Date())
                 .withExpiresAt(new Date(System.currentTimeMillis() + expirationMs))
                 .sign(Algorithm.HMAC256(secret));
     }
 
-    public String getUsernameAndVerify(String token){
-        return JWT.require(Algorithm.HMAC256(secret))
+    public boolean verifyToken(String token) {
+        JWT.require(Algorithm.HMAC256(secret))
                 .build()
-                .verify(token)
-
-                .getSubject();
+                .verify(token);
+        return true;
     }
+
 }
