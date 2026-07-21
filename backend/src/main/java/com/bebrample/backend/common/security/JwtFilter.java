@@ -7,6 +7,7 @@ import com.bebrample.backend.user.UserAuthService;
 import com.bebrample.backend.user.UserRepository;
 import com.bebrample.backend.user.entity.Guest;
 import com.bebrample.backend.user.entity.LobbyParticipant;
+import com.bebrample.backend.user.entity.User;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
@@ -46,17 +47,18 @@ public class JwtFilter extends OncePerRequestFilter {
                     token = cookie.getValue();
                 }
             }
-
             if (token != null && jwtService.verifyToken(token)) {
+
                 DecodedJWT decodedJWT = JWT.decode(token);
                 String idStr = decodedJWT.getSubject();
                 Long id = Long.parseLong(idStr);
                 String username = decodedJWT.getClaim("username").asString();
                 String role = decodedJWT.getClaim("role").asString();
 
-                LobbyParticipant participant;
-                participant = new Guest(id, username);
 
+                LobbyParticipant participant;
+                if(role.equals("ROLE_GUEST")) participant = new Guest(id, username);
+                else participant = User.builder().id(id).username(username).build();
 
                  List<GrantedAuthority> authorities = AuthorityUtils.createAuthorityList(role);
 

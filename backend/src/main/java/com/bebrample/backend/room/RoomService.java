@@ -21,20 +21,18 @@ public class RoomService {
     private final UserRepository userRepository;
     private final CacheManager cacheManager;
     private final SimpMessagingTemplate simpMessagingTemplate;
-    @Transactional
+
     public RoomResponseDto createRoom(){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        LobbyParticipant currentUser = (LobbyParticipant) auth.getPrincipal();
+        LobbyParticipant user = (LobbyParticipant) auth.getPrincipal();
 
-        User user = userRepository.findUserByUsername(currentUser.getUsername()).orElseThrow(() ->
-                    new ResourcesNotFoundException("i dunno how this could happened"));
+
 
         Cache playerCache = cacheManager.getCache("PLAYER_SESSION_CACHE");
         String player = playerCache.get(user.getId(), String.class);
         if(player != null) throw new RoomException("You already playing!");
-
         Room room = new Room();
-        room.setFirstPlayer(user);
+        room.setFirstPlayer((User) user);
         room.setSecondPlayer(null);
         room.setStatus(null);
         RoomResponseDto dto = toDto(room);
@@ -44,7 +42,6 @@ public class RoomService {
         roomCache.put(dto.getUuid(), dto);
         return dto;
     }
-    @Transactional
     public RoomResponseDto connectToRoom(String roomUuid){
 
 
