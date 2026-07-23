@@ -1,6 +1,6 @@
 package com.bebrample.backend.common.config;
 
-import com.bebrample.backend.room.RoomResponseDto;
+import com.bebrample.backend.room.Room;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
@@ -16,11 +16,11 @@ import java.time.Duration;
 public class RedisConfig {
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory redisConnectionFactory){
-           RedisCacheConfiguration redisCacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
+           RedisCacheConfiguration roomCacheConfiguration = RedisCacheConfiguration.defaultCacheConfig()
                     .entryTtl(Duration.ofMinutes(10))
                     .disableCachingNullValues()
                     .serializeValuesWith(RedisSerializationContext.SerializationPair
-                            .fromSerializer(new JacksonJsonRedisSerializer<RoomResponseDto>(RoomResponseDto.class)));
+                            .fromSerializer(new JacksonJsonRedisSerializer<Room>(Room.class)));
 
            RedisCacheConfiguration sessionConfiguration = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(15)) // наприклад, сесія живе 15 хв
@@ -31,7 +31,7 @@ public class RedisConfig {
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(RedisSerializer.string()));
 
            return RedisCacheManager.builder(redisConnectionFactory)
-                   .cacheDefaults(redisCacheConfiguration)
+                   .cacheDefaults(roomCacheConfiguration)
                    .withCacheConfiguration("PLAYER_SESSION_CACHE", sessionConfiguration)
                    .build();
     }
