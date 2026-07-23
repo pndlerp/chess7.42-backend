@@ -2,9 +2,9 @@ package com.bebrample.backend.room;
 
 import com.bebrample.backend.common.exception.ResourcesNotFoundException;
 import com.bebrample.backend.common.exception.RoomException;
-import com.bebrample.backend.user.entity.LobbyParticipant;
-import com.bebrample.backend.user.entity.User;
+import com.bebrample.backend.user.entity.*;
 import com.bebrample.backend.user.UserRepository;
+import jakarta.persistence.Lob;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.Cache;
@@ -17,61 +17,56 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class RoomService {
-    private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final LobbyParticipantMapper lobbyParticipantMapper;
     private final CacheManager cacheManager;
     private final SimpMessagingTemplate simpMessagingTemplate;
 
-    public RoomResponseDto createRoom(){
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        LobbyParticipant user = (LobbyParticipant) auth.getPrincipal();
+    public Room createRoom(){
 
-
+        LobbyParticipant user = getUserFromContext();
 
         Cache playerCache = cacheManager.getCache("PLAYER_SESSION_CACHE");
         String player = playerCache.get(user.getId(), String.class);
         if(player != null) throw new RoomException("You already playing!");
+
+        UserLobbyDto dto = lobbyParticipantMapper.toUserLobbyDto(user);
         Room room = new Room();
-        room.setFirstPlayer((User) user);
+        room.setFirstPlayer(dto);
         room.setSecondPlayer(null);
-        room.setStatus(null);
-        RoomResponseDto dto = toDto(room);
+        room.setRoomState(null);
 
         playerCache.put(user.getId(), room.getUuid());
         Cache roomCache = cacheManager.getCache("ROOM_CACHE");
-        roomCache.put(dto.getUuid(), dto);
-        return dto;
+        roomCache.put(room.getUuid(), room);
+        return room;
     }
-    public RoomResponseDto connectToRoom(String roomUuid){
+    public Room connectToRoom(String roomUuid){
+
+        LobbyParticipant user = getUserFromContext();
 
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        LobbyParticipant unUser = (LobbyParticipant) auth.getPrincipal();
+        Cache playerCache = cacheManager.getCache("PLAYER_SESSION_CACHE");
+        String player = playerCache.get(user.getId(), String.class);
+        if (player != null) throw new RoomException("You already playing!");
 
-            Cache playerCache = cacheManager.getCache("PLAYER_SESSION_CACHE");
-            String player = playerCache.get(unUser.getId(), String.class);
-            if (player != null) throw new RoomException("You already playing!");
+        Cache roomCache = cacheManager.getCache("ROOM_CACHE");
+        Room room = roomCache.get(roomUuid, Room.class);
 
-            Cache roomCache = cacheManager.getCache("ROOM_CACHE");
-            RoomResponseDto room = roomCache.get(roomUuid, RoomResponseDto.class);
 
-            room.setSecondPlayerId(unUser.getId());
+        UserLobbyDto dto = lobbyParticipantMapper.toUserLobbyDto(user);
+
+            room.setSecondPlayer(dto);
             roomCache.put(room.getUuid(), room);
-            playerCache.put(unUser.getId(), room.getUuid());
+            playerCache.put(user.getId(), room.getUuid());
             return room;
     }
 
-    private RoomResponseDto toDto(Room room){
-        RoomResponseDto dto = new RoomResponseDto();
+        private LobbyParticipant getUserFromContext(){
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            return (LobbyParticipant) auth.getPrincipal();
+        }
 
-        dto.setUuid(room.getUuid());
-        dto.setFirstPlayerId(room.getFirstPlayer().getId());
-        if(room.getSecondPlayer() != null) dto.setSecondPlayerId(room.getSecondPlayer().getId());
-        return dto;
-    }
 
-    public void sendMessage(){
-        simpMessagingTemplate.convertAndSend("topic/room/1", "server here");
-    }
 
 }

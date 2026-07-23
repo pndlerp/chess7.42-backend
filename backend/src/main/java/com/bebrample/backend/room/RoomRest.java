@@ -14,12 +14,12 @@ public class RoomRest {
     private final RoomService roomService;
 
     @PostMapping
-    public RoomResponseDto createGame(){
+    public Room createGame(){
             return roomService.createRoom();
     }
 
     @PostMapping("{uuid}")
-    public RoomResponseDto connectToRoom(@PathVariable String uuid){
+    public Room connectToRoom(@PathVariable String uuid){
         return roomService.connectToRoom(uuid);
     }
 }
