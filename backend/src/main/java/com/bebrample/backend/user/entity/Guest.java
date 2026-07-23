@@ -1,15 +1,21 @@
 package com.bebrample.backend.user.entity;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.concurrent.atomic.AtomicLong;
 @AllArgsConstructor
-@NoArgsConstructor
+@Getter
+@Setter
+@Builder
 public class Guest implements LobbyParticipant {
     private static final AtomicLong idGenerator = new AtomicLong(-1);
-    private Long id = idGenerator.getAndDecrement();
-    private String username = "bebra" + id;
+    private Long id;
+    private String username;
+
+    public Guest(){
+        id = idGenerator.getAndDecrement();
+        username = "bebra" + id;
+    }
     @Override
     public Long getId() {
         return id;
@@ -22,6 +28,8 @@ public class Guest implements LobbyParticipant {
 
     @Override
     public String getUsername() {
-        return username + id;
+        return username;
     }
+
+
 }
