@@ -1,6 +1,8 @@
 package com.bebrample.backend.room.ws;
 
+import com.bebrample.backend.room.RoomService;
 import com.bebrample.backend.room.ws.dto.MoveDto;
+import com.bebrample.backend.room.ws.dto.WebSocketEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -14,14 +16,15 @@ import org.springframework.web.bind.annotation.PathVariable;
 public class RoomWebSocketController {
 
     private final SimpMessagingTemplate simpMessagingTemplate;
-    @MessageMapping("/rooms/{roomId}/move")
-    public void makeMove(@DestinationVariable Long roomId, MoveDto moveDto) {
-        // 1. Отримуємо хід від клієнта (Spring сам розпарсить JSON у Java-об'єкт)
-        System.out.println("Гравець зробив хід у клітинку: " + moveDto);
+    private final RoomService roomService;
+    @MessageMapping("/rooms/{uuid}/move")
+    public void makeMove(@DestinationVariable String uuid, MoveDto move) {
+        simpMessagingTemplate.convertAndSend("/topic/rooms/" + uuid, new WebSocketEvent<>("MOVE",move));
 
-        // 2. Тут може бути якась перевірка логіки...
+        roomService.updateChessState(uuid, move);
+    }
 
-        simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomId, moveDto);
-
+    public void sendConnectionMessage(@DestinationVariable String uuid){
+        simpMessagingTemplate.convertAndSend("/topic/rooms/" + uuid, "user connected!");
     }
 }
