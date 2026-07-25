@@ -28,11 +28,11 @@ public class UserRest {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> loginToAccount(@Valid @RequestBody UserCreateDto dto, HttpServletResponse response){
+    public ResponseEntity<UserCreateDto> loginToAccount(@Valid @RequestBody UserCreateDto dto, HttpServletResponse response){
         String jwt = userService.login(dto);
         ResponseCookie cookie = cookieService.createCookie(jwt);
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        return ResponseEntity.ok("ok");
+        return ResponseEntity.ok(dto);
 
     }
 
@@ -40,7 +40,7 @@ public class UserRest {
     public ResponseEntity<String> logoutFromAccount(HttpServletResponse response){
         ResponseCookie cookie = cookieService.deleteCookie();
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        return ResponseEntity.ok("ok");
+        return ResponseEntity.ok("logged out");
     }
 
     @PostMapping("/anonymous")
@@ -48,7 +48,7 @@ public class UserRest {
         String jwt = userService.createGuest();
         ResponseCookie cookie = cookieService.createCookie(jwt);
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        return ResponseEntity.ok("ok");
+        return ResponseEntity.ok("created anonymous account");
     }
 
 }
