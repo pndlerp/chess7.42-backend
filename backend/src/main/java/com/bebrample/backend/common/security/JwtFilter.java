@@ -31,7 +31,6 @@ import java.util.List;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -60,7 +59,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 if(role.equals("ROLE_GUEST")) participant = new Guest(id, username);
                 else participant = User.builder().id(id).username(username).build();
 
-                 List<GrantedAuthority> authorities = AuthorityUtils.createAuthorityList(role);
+                List<GrantedAuthority> authorities = AuthorityUtils.createAuthorityList(role);
 
                 UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                         participant, null, authorities);
