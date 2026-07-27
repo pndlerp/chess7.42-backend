@@ -2,9 +2,6 @@ package com.bebrample.backend.common.security;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import com.bebrample.backend.common.exception.ResourcesNotFoundException;
-import com.bebrample.backend.user.UserAuthService;
-import com.bebrample.backend.user.UserRepository;
 import com.bebrample.backend.user.entity.Guest;
 import com.bebrample.backend.user.entity.LobbyParticipant;
 import com.bebrample.backend.user.entity.User;
@@ -17,13 +14,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 @Component
