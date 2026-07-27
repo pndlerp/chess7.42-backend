@@ -1,5 +1,6 @@
 package com.bebrample.backend.room.ws;
 
+import com.bebrample.backend.common.exception.ResourcesNotFoundException;
 import com.bebrample.backend.entity.Role;
 import com.bebrample.backend.room.Room;
 import com.bebrample.backend.room.RoomService;
@@ -33,13 +34,13 @@ public class RoomWebSocketListener {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         String destination = accessor.getDestination();
 //        roomService.createRoom();
-//        String roomUuid = destination.substring(destinationPrefix.length());
+        String roomUuid = destination.substring(destinationPrefix.length());
         Principal principal = accessor.getUser();
         UsernamePasswordAuthenticationToken auth = (UsernamePasswordAuthenticationToken) principal;
         LobbyParticipant participant = (LobbyParticipant) auth.getPrincipal();
-        String roomUuid = redisUserTemplate.opsForValue().get("user:" + participant.getId());
+        //String roomUuid = redisUserTemplate.opsForValue().get("user:" + participant.getId());
         Room room = redisTemplate.opsForValue().get("room:state:"+ roomUuid);
-        if(room == null) return;
+        if(room == null) throw new ResourcesNotFoundException("this Room isn't accessible anymore");
         ConnectDto dto = new ConnectDto();
         dto.setPlayerName(participant.getUsername());
         if(room.getFirstPlayer().getId().equals(participant.getId()) || room.getSecondPlayer().getId().equals(participant.getId()))
