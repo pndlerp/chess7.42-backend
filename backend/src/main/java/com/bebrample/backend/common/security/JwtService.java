@@ -2,17 +2,15 @@ package com.bebrample.backend.common.security;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
 
 @Service
-@RequiredArgsConstructor
 public class JwtService {
-
-    private final String secret = "govnogovnogovnogovnogovnogovnogovno";
+    @Value("${jwt.secret}")
+    private String secret;
 
     private final long expirationMs = 86400000;
 

@@ -9,8 +9,8 @@ services:
     volumes:
       - chessdata:/var/lib/postgresql/data
     environment:
-      - POSTGRES_USER=bebra
-      - POSTGRES_PASSWORD=bebra123456789
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=chess_backend
 
   redis:
