@@ -8,21 +8,29 @@ import com.bebrample.backend.user.entity.Guest;
 import com.bebrample.backend.user.entity.User;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     @Transactional
-    public UserResponseDto save(UserCreateDto dto){
+    public UserResponseDto register(UserCreateDto dto){
 //        User user = userMapper.toUser(dto);
 //        userRepository.save(user);
 //        return userMapper.toUserResponse(user);
+        Optional<User> userInDb = userRepository.findUserByUsername(dto.getUsername());
+        if(userInDb.isPresent()){
+            throw new ResourcesNotFoundException("User with current username in database");
+        }
         User user = new User();
         user.setUsername(dto.getUsername());
         String password = passwordEncoder.encode(dto.getPassword());
@@ -45,6 +53,12 @@ public class UserService {
     public String createGuest(){
         Guest guest = new Guest();
         return jwtService.generateToken(guest.getId().toString(),guest.getUsername(), "ROLE_GUEST");
+    }
+
+    public UserResponseDto findById(Long id){
+        User user = userRepository.findById(id).orElseThrow(() -> new ResourcesNotFoundException("user not found!!!"));
+        UserResponseDto dto = userMapper.toUserResponse(user);
+        return dto;
     }
 
 

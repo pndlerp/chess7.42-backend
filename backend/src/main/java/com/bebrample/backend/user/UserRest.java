@@ -3,7 +3,6 @@ package com.bebrample.backend.user;
 import com.bebrample.backend.common.security.CookieService;
 import com.bebrample.backend.user.dto.UserCreateDto;
 import com.bebrample.backend.user.dto.UserResponseDto;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +23,7 @@ public class UserRest {
 
     @PostMapping("/register")
     public UserResponseDto createAccount(@Valid @RequestBody UserCreateDto dto){
-        return userService.save(dto);
+        return userService.register(dto);
     }
 
     @PostMapping("/login")
@@ -49,6 +48,11 @@ public class UserRest {
         ResponseCookie cookie = cookieService.createCookie(jwt);
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         return ResponseEntity.ok("created anonymous account");
+    }
+
+    @GetMapping("/{id}")
+    public UserResponseDto getUser(@PathVariable Long id){
+        return userService.findById(id);
     }
 
 }
