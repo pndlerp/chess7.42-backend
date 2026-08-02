@@ -19,6 +19,8 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
 
 import java.util.List;
+import java.util.Objects;
+
 @Slf4j
 @RequiredArgsConstructor
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
@@ -30,7 +32,8 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel messageChannel) {
 
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-        if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
+        if (accessor != null && Objects.equals(StompCommand.CONNECT, accessor.getCommand())) {
+
             String token = (String) accessor.getSessionAttributes().get("jwt");
 
             if (token != null && jwtService.verifyToken(token)) {

@@ -3,7 +3,6 @@ package com.bebrample.backend.match;
 import com.bebrample.backend.common.exception.ResourcesNotFoundException;
 import com.bebrample.backend.entity.Color;
 import com.bebrample.backend.match.dto.MatchResponseDto;
-import com.bebrample.backend.room.RedisRepository;
 import com.bebrample.backend.room.Room;
 import com.bebrample.backend.room.ws.dto.MoveDto;
 import com.bebrample.backend.user.UserRepository;
@@ -11,8 +10,6 @@ import com.bebrample.backend.user.entity.User;
 import com.bebrample.backend.user.entity.UserLobbyDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -43,8 +40,8 @@ public class MatchService {
                 .orElseThrow(() -> new ResourcesNotFoundException("User not found in db"));
         User blackPlayer = userRepository.findUserById(blackPlayerId)
                 .orElseThrow(() -> new ResourcesNotFoundException("User not found in db"));
-        match.setBlackPlayer(whitePlayer);
-        match.setWhitePlayer(blackPlayer);
+        match.setBlackPlayer(blackPlayer);
+        match.setWhitePlayer(whitePlayer);
         match.setFinalFen(null);
         match.setResult(null);
         match.setPgn(generatePgn(moves));

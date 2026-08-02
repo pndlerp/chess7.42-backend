@@ -57,7 +57,7 @@ public class RoomService {
             }
             Room room = redisRepository.getRoom(roomUuid);
             if (room == null) throw new RoomException("Room is null");
-
+            if(room.getSecondPlayer() != null) throw new RoomException("Room is already full");
             UserLobbyDto dto = lobbyParticipantMapper.toUserLobbyDto(user);
             room.setSecondPlayer(dto);
 
@@ -87,10 +87,12 @@ public class RoomService {
             if(whoMadeMove.getColor() != room.getActiveColor()) throw new RoomException("not your move");
             redisRepository.addMoveList(roomUuid, move);
             simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("MOVE", move));
+            if (move.getTo().equals("ee") && move.getFrom().equals("ee")){
+                 endGame(roomUuid);
+                 return;
+            }
             room.setActiveColor(atStart.toggle());
             redisRepository.updateRoom(room);
-            if (move.getTo().equals("ee") && move.getFrom().equals("ee")) endGame(roomUuid);
-
         }
 
         private void endGame(String roomUuid){
@@ -109,7 +111,7 @@ public class RoomService {
             List<MoveDto> moves = redisRepository.getMoves(room.getUuid());
             SaveMatchEvent event = new SaveMatchEvent(room, moves);
             eventPublisher.publishEvent(event);
-            GameOverDto gameOverDto = new GameOverDto("sybau", "me", "im cool");
+            GameOverDto gameOverDto = new GameOverDto(null, null, null);
             simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("GAME_OVER", gameOverDto));
             log.info("saved game with room id:{}", roomUuid);
         }
@@ -131,6 +133,7 @@ public class RoomService {
         private void startGame(Room room){
             randomizeSides(room);
             room.setRoomState(RoomState.ONGOING);
+            room.setCurrentFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
             room.setActiveColor(Color.WHITE);
         }
 
