@@ -14,6 +14,5 @@ import lombok.Setter;
 public class ConnectDto {
     Role role;
     String playerName;
-    String opponentName;
     RoomState roomState;
 }

@@ -18,7 +18,6 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 
 import java.security.Principal;
-import java.util.Objects;
 
 @Component
 @Slf4j
@@ -32,15 +31,14 @@ public class RoomWebSocketListener {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         String destination = accessor.getDestination();
         var sessionAttributes = accessor.getSessionAttributes();
-        String roomUuid = null;
+        String roomUuid;
         if (destination != null && sessionAttributes != null) {
-            log.info("Клієнт підписався на: {}", destination);
             sessionAttributes.put("destination", destination);
             roomUuid = destination.substring(destinationPrefix.length());
 
         } else {
-            log.info("не вдалось отримати destination");
-            throw new ResourcesNotFoundException("не вдалось отримати destination");
+            log.info("cant get destination");
+            throw new ResourcesNotFoundException("cant get destination");
         }
         LobbyParticipant participant = getLobbyParticipant(accessor);
         Room room = redisRepository.getRoom(roomUuid);
@@ -69,19 +67,15 @@ public class RoomWebSocketListener {
         }
     }
 
-    private static ConnectDto getConnectDto(LobbyParticipant participant, Room room) {
+    private ConnectDto getConnectDto(LobbyParticipant participant, Room room) {
         ConnectDto dto = new ConnectDto();
         dto.setPlayerName(participant.getUsername());
-        if(Objects.equals(room.getFirstPlayer().getId(), participant.getId()) || Objects.equals(room.getSecondPlayer().getId(),participant.getId()))
-            dto.setRole(Role.PLAYER);
-        else dto.setRole(Role.SPECTATOR);
-
-        dto.setRoomState(room.getRoomState());
-        if(room.getSecondPlayer() != null) {
-            if (Objects.equals(room.getFirstPlayer().getUsername(), participant.getUsername()))
-                dto.setOpponentName(room.getSecondPlayer().getUsername());
-            else dto.setOpponentName(room.getFirstPlayer().getUsername());
+        String redisRoomUuid = redisRepository.getUserRoomUuid(participant.getId());
+        if(redisRoomUuid != null) {
+            if (redisRoomUuid.equals(room.getUuid())) dto.setRole(Role.PLAYER);
         }
+        else dto.setRole(Role.SPECTATOR);
+        dto.setRoomState(room.getRoomState());
         return dto;
     }
 
