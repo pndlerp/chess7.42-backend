@@ -9,11 +9,23 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleAllUncaughtExceptions(Exception e){
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "Unhandled Exception",
+                "Internal server error"
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+
     @ExceptionHandler(RoomException.class)
     public ResponseEntity<ErrorResponse> handleRoomAlreadyFull(RoomException e){
         ErrorResponse errorResponse = new ErrorResponse();
         errorResponse.setStatus(HttpStatus.CONFLICT.value());
-        errorResponse.setError("Room logic type shi");
+        errorResponse.setError("Room conflict");
         errorResponse.setMessage(e.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }
@@ -21,7 +33,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleResourcesNotFound(ResourcesNotFoundException e){
         ErrorResponse errorResponse = new ErrorResponse();
         errorResponse.setStatus(HttpStatus.NOT_FOUND.value());
-        errorResponse.setError("Resources not Found");
+        errorResponse.setError("Resources not found");
         errorResponse.setMessage(e.getMessage());
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
