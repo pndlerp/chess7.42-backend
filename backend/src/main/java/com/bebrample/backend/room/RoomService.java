@@ -1,5 +1,7 @@
 package com.bebrample.backend.room;
 
+import com.bebrample.backend.chess.ChessService;
+import com.bebrample.backend.chess.MakeMoveResponseDto;
 import com.bebrample.backend.common.exception.ResourcesNotFoundException;
 import com.bebrample.backend.common.exception.RoomException;
 import com.bebrample.backend.entity.Color;
@@ -28,6 +30,7 @@ public class RoomService {
     private final RedisRepository redisRepository;
     private final SimpMessagingTemplate simpMessagingTemplate;
     private final ApplicationEventPublisher eventPublisher;
+    private final ChessService chessService;
 
         public Room createRoom(){
 
@@ -52,8 +55,7 @@ public class RoomService {
             LobbyParticipant user = getUserFromContext();
 
             if(redisRepository.isPlaying(user.getId())) {
-                log.info("user is playing");
-                throw new RoomException("User is playing");
+                throw new RoomException("User already playing other game");
             }
             Room room = redisRepository.getRoom(roomUuid);
             if (room == null) throw new RoomException("Room is null");
@@ -77,25 +79,31 @@ public class RoomService {
 
             if(room.getRoomState() == RoomState.FINISHED) throw new RoomException("Game is finished. its over.");
             String redisRoomUuid = redisRepository.getUserRoomUuid(user.getId());
-            if(redisRoomUuid == null) throw new ResourcesNotFoundException("User not playing?");
-            if(!redisRoomUuid.equals(roomUuid)) throw new RoomException("you aint even playin this game bradar");
+            if(redisRoomUuid == null) throw new ResourcesNotFoundException("You are not playing any game");
+            if(!redisRoomUuid.equals(roomUuid)) throw new RoomException("You are not playing this game");
 
             if(user.getId().equals(room.getFirstPlayer().getId())) whoMadeMove = room.getFirstPlayer();
              else if(user.getId().equals(room.getSecondPlayer().getId())) whoMadeMove = room.getSecondPlayer();
 
              if(whoMadeMove == null) throw new ResourcesNotFoundException("how");
-            if(whoMadeMove.getColor() != room.getActiveColor()) throw new RoomException("not your move");
+            if(whoMadeMove.getColor() != room.getActiveColor()) throw new RoomException("Not your move");
             redisRepository.addMoveList(roomUuid, move);
-            simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("MOVE", move));
+            String fen = room.getCurrentFen();
+            MakeMoveResponseDto responseMove = chessService.makeMove(fen, move.getFrom() + move.getTo());
+            simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("MOVE", responseMove));
+            if(responseMove.getIsCheckmate() || responseMove.getIsStalemate()){
+                endGame(roomUuid, whoMadeMove);
+                return;
+            }
             if (move.getTo().equals("ee") && move.getFrom().equals("ee")){
-                 endGame(roomUuid);
+                 endGame(roomUuid, whoMadeMove);
                  return;
             }
             room.setActiveColor(atStart.toggle());
             redisRepository.updateRoom(room);
         }
 
-        private void endGame(String roomUuid){
+        private void endGame(String roomUuid, UserLobbyDto whoMadeMove){
 
             Room room = redisRepository.getRoom(roomUuid);
             if(room == null){
@@ -111,7 +119,7 @@ public class RoomService {
             List<MoveDto> moves = redisRepository.getMoves(room.getUuid());
             SaveMatchEvent event = new SaveMatchEvent(room, moves);
             eventPublisher.publishEvent(event);
-            GameOverDto gameOverDto = new GameOverDto(null, null, null);
+            GameOverDto gameOverDto = new GameOverDto(whoMadeMove.getUsername(), null);
             simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("GAME_OVER", gameOverDto));
             log.info("saved game with room id:{}", roomUuid);
         }
@@ -119,9 +127,8 @@ public class RoomService {
 
 
         private void randomizeSides(Room room){
-            boolean RNGGOD = ThreadLocalRandom.current().nextBoolean();
-            if(RNGGOD){
-                // if rng god wants to leave it as it is, then it should be like that.
+            boolean rng = ThreadLocalRandom.current().nextBoolean();
+            if(rng){
                 room.getFirstPlayer().setColor(Color.WHITE);
                 room.getSecondPlayer().setColor(Color.BLACK);
             } else {
