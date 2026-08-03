@@ -27,11 +27,12 @@ public class UserRest {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<UserCreateDto> loginToAccount(@Valid @RequestBody UserCreateDto dto, HttpServletResponse response){
+    public ResponseEntity<UserResponseDto> loginToAccount(@Valid @RequestBody UserCreateDto dto, HttpServletResponse response){
         String jwt = userService.login(dto);
         ResponseCookie cookie = cookieService.createCookie(jwt);
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-        return ResponseEntity.ok(dto);
+        UserResponseDto user = userService.findByName(dto.getUsername());
+        return ResponseEntity.ok(user);
 
     }
 

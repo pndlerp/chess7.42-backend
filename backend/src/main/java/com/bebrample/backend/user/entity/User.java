@@ -22,7 +22,7 @@ public class User implements LobbyParticipant {
     private String username;
     @Column(name = "password", nullable = false)
     private String password;
-    @Column(name = "created_at", unique = true, updatable = false)
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt = Instant.now();
 
     @Override

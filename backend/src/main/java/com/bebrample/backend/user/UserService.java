@@ -24,9 +24,6 @@ public class UserService {
     private final JwtService jwtService;
     @Transactional
     public UserResponseDto register(UserCreateDto dto){
-//        User user = userMapper.toUser(dto);
-//        userRepository.save(user);
-//        return userMapper.toUserResponse(user);
         Optional<User> userInDb = userRepository.findUserByUsername(dto.getUsername());
         if(userInDb.isPresent()){
             throw new ResourcesNotFoundException("User with current username in database");
@@ -56,9 +53,15 @@ public class UserService {
     }
 
     public UserResponseDto findById(Long id){
-        User user = userRepository.findById(id).orElseThrow(() -> new ResourcesNotFoundException("user not found!!!"));
-        UserResponseDto dto = userMapper.toUserResponse(user);
-        return dto;
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourcesNotFoundException("User not found"));
+        return userMapper.toUserResponse(user);
+    }
+
+    public UserResponseDto findByName(String name){
+        User user = userRepository.findUserByUsername(name)
+                .orElseThrow( () -> new ResourcesNotFoundException("User not found"));
+        return userMapper.toUserResponse(user);
     }
 
 
