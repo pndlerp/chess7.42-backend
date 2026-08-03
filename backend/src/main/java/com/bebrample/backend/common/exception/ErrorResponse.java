@@ -6,13 +6,16 @@ import org.hibernate.validator.constraints.Normalized;
 import java.time.LocalDateTime;
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
-@Builder
 public class ErrorResponse {
     private LocalDateTime timestamp = LocalDateTime.now();
     private int status;
     private String error;
     private String message;
 
+    public ErrorResponse(int status, String error, String message) {
+        this.status = status;
+        this.error = error;
+        this.message = message;
+    }
 }
