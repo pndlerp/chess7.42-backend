@@ -45,9 +45,9 @@ public class RoomService {
             room.setSecondPlayer(null);
             room.setRoomState(RoomState.WAITING_FOR_OPPONENT);
 
-            redisRepository.createUser(room.getUuid(), user.getId());
+            redisRepository.updateUser(room.getUuid(), user.getId());
             redisRepository.updateRoom(room);
-
+            updateRoom(room);
             return room;
         }
         public Room connectToRoom(String roomUuid){
@@ -67,7 +67,8 @@ public class RoomService {
             log.info("{} <- second player", room.getSecondPlayer());
 
             redisRepository.updateRoom(room);
-            redisRepository.createUser(room.getUuid(), user.getId());
+            redisRepository.updateUser(room.getUuid(), user.getId());
+            updateRoom(room);
             return room;
         }
 
@@ -77,7 +78,7 @@ public class RoomService {
             if(room == null) throw new ResourcesNotFoundException("Room is null");
             Color atStart = room.getActiveColor();
 
-            if(room.getRoomState() == RoomState.FINISHED) throw new RoomException("Game is finished. its over.");
+            if(room.getRoomState() != RoomState.ONGOING) throw new RoomException("Game is finished. its over.");
             String redisRoomUuid = redisRepository.getUserRoomUuid(user.getId());
             if(redisRoomUuid == null) throw new ResourcesNotFoundException("You are not playing any game");
             if(!redisRoomUuid.equals(roomUuid)) throw new RoomException("You are not playing this game");
@@ -87,18 +88,27 @@ public class RoomService {
 
              if(whoMadeMove == null) throw new ResourcesNotFoundException("how");
             if(whoMadeMove.getColor() != room.getActiveColor()) throw new RoomException("Not your move");
-            redisRepository.addMoveList(roomUuid, move);
+
             String fen = room.getCurrentFen();
             MakeMoveResponseDto responseMove = chessService.makeMove(fen, move.getFrom() + move.getTo());
-            simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("MOVE", responseMove));
-            if(responseMove.getIsCheckmate() || responseMove.getIsStalemate()){
+            switch (responseMove.getStatus()){
+                case "checkmate": room.setRoomState(RoomState.CHECKMATE);
+                case "stalemate": room.setRoomState(RoomState.STALEMATE);
+                case "draw": room.setRoomState(RoomState.DRAW);
+            }
+            if(responseMove.getStatus().equals("checkmate") || responseMove.getStatus().equals("stalemate") || responseMove.getStatus().equals("draw")){
                 endGame(roomUuid, whoMadeMove);
                 return;
             }
-            if (move.getTo().equals("ee") && move.getFrom().equals("ee")){
-                 endGame(roomUuid, whoMadeMove);
-                 return;
-            }
+
+            room.setCurrentFen(responseMove.getFen());
+            simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("MOVE", responseMove));
+            updateRoom(room);
+            redisRepository.addMoveList(roomUuid, move);
+//            if(responseMove.getIsCheckmate() || responseMove.getIsStalemate()){
+//                endGame(roomUuid, whoMadeMove);
+//                return;
+//            }
             room.setActiveColor(atStart.toggle());
             redisRepository.updateRoom(room);
         }
@@ -110,7 +120,6 @@ public class RoomService {
                 log.info("room is null");
                 return;
             }
-            room.setRoomState(RoomState.FINISHED);
             redisRepository.updateRoom(room);
             if(!(room.getSecondPlayer() != null && (room.getSecondPlayer().getId() > 0 && room.getFirstPlayer().getId() > 0))) {
                 log.info("game played with guest/not full lobby. prevent from saving");
@@ -119,8 +128,11 @@ public class RoomService {
             List<MoveDto> moves = redisRepository.getMoves(room.getUuid());
             SaveMatchEvent event = new SaveMatchEvent(room, moves);
             eventPublisher.publishEvent(event);
-            GameOverDto gameOverDto = new GameOverDto(whoMadeMove.getUsername(), null);
-            simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("GAME_OVER", gameOverDto));
+            GameOverDto gameOverDto = new GameOverDto(whoMadeMove.getUsername(), room.getRoomState());
+            updateRoom(room);
+            redisRepository.clearMatchData(room);
+            simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid,
+                    new WebSocketEvent<>("GAME_OVER", gameOverDto));
             log.info("saved game with room id:{}", roomUuid);
         }
 
@@ -150,6 +162,10 @@ public class RoomService {
         private LobbyParticipant getUserFromContext(){
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
             return (LobbyParticipant) auth.getPrincipal();
+        }
+
+        private void updateRoom(Room room){
+            simpMessagingTemplate.convertAndSend("/topic/rooms/" + room.getUuid(), new WebSocketEvent<>("ROOM_INFO", room ));
         }
 
 
