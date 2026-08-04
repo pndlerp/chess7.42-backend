@@ -7,7 +7,6 @@ import lombok.Getter;
 @Getter
 public class MakeMoveResponseDto {
     private String fen;
-    private Boolean isCheck;
-    private Boolean isCheckmate;
-    private Boolean isStalemate;
+    private String status;
+    private String winner;
 }
