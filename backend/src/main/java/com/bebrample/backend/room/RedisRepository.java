@@ -1,8 +1,6 @@
 package com.bebrample.backend.room;
 
-import com.bebrample.backend.common.exception.RoomException;
 import com.bebrample.backend.room.ws.dto.MoveDto;
-import com.bebrample.backend.user.entity.LobbyParticipant;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -21,15 +19,19 @@ public class RedisRepository {
     private static final String CACHE_MOVES_KEY_PREFIX = "room:moves:";
     private static final String CACHE_LOBBY_PARTICIPANT_KEY_PREFIX = "user:";
 
-    public void createUser(String roomUuid, Long participantId){
+    public void updateUser(String roomUuid, Long participantId){
         stringRedisTemplate.opsForValue()
                 .set(CACHE_LOBBY_PARTICIPANT_KEY_PREFIX + participantId,
-                        roomUuid, Duration.ofMinutes(30));
+                        roomUuid, Duration.ofMinutes(24));
     }
 
     public String getUserRoomUuid(Long userId){
         return stringRedisTemplate.opsForValue()
                 .get(CACHE_LOBBY_PARTICIPANT_KEY_PREFIX + userId);
+    }
+
+    public void deleteUser(Long userId){
+        stringRedisTemplate.delete(CACHE_LOBBY_PARTICIPANT_KEY_PREFIX + userId);
     }
 
     public List<MoveDto> getMoves(String roomUuid){
@@ -50,7 +52,7 @@ public class RedisRepository {
     public void updateRoom(Room room){
         redisRoomTemplate.opsForValue()
                 .set(CACHE_ROOM_KEY_PREFIX + room.getUuid(),
-                        room, Duration.ofMinutes(30));
+                        room, Duration.ofMinutes(24));
     }
 
     public boolean isRoomNull(String roomUuid){
@@ -63,6 +65,21 @@ public class RedisRepository {
 
     public void addMoveList(String roomUuid, MoveDto move){
         redisMoveDtoTemplate.opsForList().rightPush(CACHE_MOVES_KEY_PREFIX + roomUuid, move);
-        redisMoveDtoTemplate.expire(CACHE_MOVES_KEY_PREFIX + roomUuid, Duration.ofMinutes(30));
+        redisMoveDtoTemplate.expire(CACHE_MOVES_KEY_PREFIX + roomUuid, Duration.ofMinutes(24));
+    }
+
+    public void deleteRoom(Room room) {
+        redisRoomTemplate.delete(CACHE_ROOM_KEY_PREFIX + room.getUuid());
+    }
+
+    public void deleteMoves(Room room) {
+        redisMoveDtoTemplate.delete(CACHE_MOVES_KEY_PREFIX + room.getUuid());
+    }
+
+    public void clearMatchData(Room room){
+        deleteUser(room.getFirstPlayer().getId());
+        deleteUser(room.getSecondPlayer().getId());
+        deleteRoom(room);
+        deleteMoves(room);
     }
 }
