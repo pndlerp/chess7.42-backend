@@ -43,9 +43,10 @@ public class RoomWebSocketListener {
         LobbyParticipant participant = getLobbyParticipant(accessor);
         Room room = redisRepository.getRoom(roomUuid);
         if(room == null) throw new ResourcesNotFoundException("this Room isn't accessible anymore");
-        
+        redisRepository.updateUser(roomUuid, participant.getId());
         ConnectDto dto = getConnectDto(participant, room);
         simpMessagingTemplate.convertAndSend(destination, new WebSocketEvent<>("CONNECTED", dto));
+        simpMessagingTemplate.convertAndSend("/topic/rooms/" + room.getUuid(), new WebSocketEvent<>("ROOM_INFO", room ));
     }
 
     @EventListener
@@ -61,6 +62,7 @@ public class RoomWebSocketListener {
 
             LobbyParticipant participant = getLobbyParticipant(accessor);
             Room room = redisRepository.getRoom(roomUuid);
+            redisRepository.deleteUser(participant.getId());
             if(room == null) throw new ResourcesNotFoundException("this Room isn't accessible anymore");
             ConnectDto dto = getConnectDto(participant, room);
             simpMessagingTemplate.convertAndSend(destination, new WebSocketEvent<>("DISCONNECTED", dto));
