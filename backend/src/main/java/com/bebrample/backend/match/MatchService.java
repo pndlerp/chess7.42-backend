@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,15 +25,15 @@ public class MatchService {
     private final MatchRepository matchRepository;
     @Async
     public void saveMatch(Room room, List<MoveDto> moves){
-        Long whitePlayerId;
-        Long blackPlayerId;
-        if(room.getFirstPlayer().getColor().equals(Color.WHITE)){
-            whitePlayerId = room.getFirstPlayer().getId();
-            blackPlayerId = room.getSecondPlayer().getId();
-        } else {
-             whitePlayerId = room.getSecondPlayer().getId();
-             blackPlayerId = room.getFirstPlayer().getId();
-        }
+        Long whitePlayerId = (room.getFirstPlayer().getColor().equals(Color.WHITE) ? room.getFirstPlayer().getId() : room.getSecondPlayer().getId());
+        Long blackPlayerId = (Objects.equals(whitePlayerId, room.getFirstPlayer().getId())) ? room.getSecondPlayer().getId() : room.getFirstPlayer().getId();
+//        if(room.getFirstPlayer().getColor().equals(Color.WHITE)){
+//            whitePlayerId = room.getFirstPlayer().getId();
+//            blackPlayerId = room.getSecondPlayer().getId();
+//        } else {
+//             whitePlayerId = room.getSecondPlayer().getId();
+//             blackPlayerId = room.getFirstPlayer().getId();
+//        }
 
         Match match = new Match();
         match.setRoomUuid(room.getUuid());
@@ -42,7 +43,7 @@ public class MatchService {
                 .orElseThrow(() -> new ResourcesNotFoundException("User not found in db"));
         match.setBlackPlayer(blackPlayer);
         match.setWhitePlayer(whitePlayer);
-        match.setFinalFen(null);
+        match.setFinalFen(room.getCurrentFen());
         match.setResult(null);
         match.setPgn(generatePgn(moves));
 
@@ -59,9 +60,7 @@ public class MatchService {
         List<Match> matches = matchRepository.findMatchesByBlackPlayer_IdOrWhitePlayer_Id(id, id);
         List<MatchResponseDto> matchDtos = new ArrayList<>();
         for(Match m : matches){
-            UserLobbyDto whitePlayer = new UserLobbyDto(m.getWhitePlayer().getId(), m.getWhitePlayer().getUsername(), Color.WHITE);
-            UserLobbyDto blackPlayer = new UserLobbyDto(m.getBlackPlayer().getId(), m.getBlackPlayer().getUsername(), Color.BLACK);
-            MatchResponseDto dto = new MatchResponseDto(m.getId(),m.getRoomUuid(),whitePlayer,blackPlayer, m.getFinalFen(), m.getPgn(), m.getResult());
+            MatchResponseDto dto = matchToMatchResponseDto(m);
             matchDtos.add(dto);
         }
         return matchDtos;
@@ -69,8 +68,20 @@ public class MatchService {
 
     public MatchResponseDto getMatch(Long id){
         Match m = matchRepository.findById(id).orElseThrow(() -> new ResourcesNotFoundException("not found"));
-        UserLobbyDto whitePlayer = new UserLobbyDto(m.getWhitePlayer().getId(), m.getWhitePlayer().getUsername(), Color.WHITE);
-        UserLobbyDto blackPlayer = new UserLobbyDto(m.getBlackPlayer().getId(), m.getBlackPlayer().getUsername(), Color.BLACK);
-        return new MatchResponseDto(m.getId(),m.getRoomUuid(),whitePlayer,blackPlayer, m.getFinalFen(), m.getPgn(), m.getResult());
+        return matchToMatchResponseDto(m);
+    }
+
+    private UserLobbyDto userToUserLobbyDto(User player, Color color){
+        Color colorToSet = (color == Color.WHITE) ? Color.WHITE : Color.BLACK;
+        return new UserLobbyDto(player.getId(), player.getUsername(), colorToSet);
+    }
+    private MatchResponseDto matchToMatchResponseDto(Match m){
+        return new MatchResponseDto(m.getId(),
+                m.getRoomUuid(),
+                userToUserLobbyDto(m.getWhitePlayer(), Color.WHITE),
+                userToUserLobbyDto(m.getBlackPlayer(), Color.BLACK),
+                m.getFinalFen(),
+                m.getPgn(),
+                m.getResult());
     }
 }

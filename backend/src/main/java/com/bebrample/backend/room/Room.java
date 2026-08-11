@@ -13,6 +13,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@ToString
 public class Room {
     private String uuid = UUID.randomUUID().toString();
     private RoomState roomState;

@@ -5,15 +5,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClient;
 
-// робиться запит на легальність ходу, якщо хід легальний, повертаємо fen і фронтенд сам змінює дошку
 @Service
 @RequiredArgsConstructor
 public class ChessService {
     private final RestClient restClient;
 
-    public MakeMoveResponseDto makeMove(String fen, String move){
+    public MakeMoveResponseDto makeMove(String fen, String move) {
         System.out.println("FEN: " + fen + ", MOVE: " + move);
         try {
             return restClient.post()
@@ -22,9 +22,10 @@ public class ChessService {
                     .body(new MakeMoveRequestDto(fen, move))
                     .retrieve()
                     .body(MakeMoveResponseDto.class);
-        }
-        catch (HttpClientErrorException.BadRequest exception){
-            throw new RoomException("Internal server Error" );
+        } catch (HttpClientErrorException.BadRequest exception) {
+            throw new RoomException("Probably illegal move");
+        } catch (HttpServerErrorException.InternalServerError e) {
+            throw new RuntimeException("Internal server error");
         }
     }
 }

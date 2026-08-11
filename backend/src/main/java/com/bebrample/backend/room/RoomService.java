@@ -15,8 +15,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -46,7 +44,7 @@ public class RoomService {
 
             redisRepository.updateUser(room.getUuid(), participant.getId());
             redisRepository.updateRoom(room);
-            updateRoom(room);
+            sendUpdateMessage(room);
             return room;
         }
         public Room connectToRoom(String roomUuid, LobbyParticipant user){
@@ -64,7 +62,7 @@ public class RoomService {
 
             redisRepository.updateRoom(room);
             redisRepository.updateUser(room.getUuid(), user.getId());
-            updateRoom(room);
+            sendUpdateMessage(room);
             return room;
         }
 
@@ -87,8 +85,8 @@ public class RoomService {
 
             String fen = room.getCurrentFen();
             MakeMoveResponseDto responseMove = chessService.makeMove(fen, move.getFrom() + move.getTo());
-            if(responseMove.getStatus() != null) {
-                switch (responseMove.getStatus()) {
+            if(responseMove.getGameStatus() != null) {
+                switch (responseMove.getGameStatus()) {
                     case "checkmate":
                         room.setRoomState(RoomState.CHECKMATE);
                     case "stalemate":
@@ -97,7 +95,7 @@ public class RoomService {
                         room.setRoomState(RoomState.DRAW);
                         break;
                 }
-                if(responseMove.getStatus().equals("checkmate") || responseMove.getStatus().equals("stalemate") || responseMove.getStatus().equals("draw")) {
+                if(responseMove.getGameStatus().equals("checkmate") || responseMove.getGameStatus().equals("stalemate") || responseMove.getGameStatus().equals("draw")) {
                     endGame(roomUuid, whoMadeMove);
                     return;
                 }
@@ -105,7 +103,7 @@ public class RoomService {
 
             room.setCurrentFen(responseMove.getFen());
             simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("MOVE", responseMove));
-            updateRoom(room);
+            sendUpdateMessage(room);
             redisRepository.addMoveList(roomUuid, move);
 //            if(responseMove.getIsCheckmate() || responseMove.getIsStalemate()){
 //                endGame(roomUuid, whoMadeMove);
@@ -125,13 +123,14 @@ public class RoomService {
             redisRepository.updateRoom(room);
             if(!(room.getSecondPlayer() != null && (room.getSecondPlayer().getId() > 0 && room.getFirstPlayer().getId() > 0))) {
                 log.info("game played with guest/not full lobby. prevent from saving");
+                //TODO: refactor db to add possibility to save games with guests
                 return;
             }
             List<MoveDto> moves = redisRepository.getMoves(room.getUuid());
             SaveMatchEvent event = new SaveMatchEvent(room, moves);
             eventPublisher.publishEvent(event);
             GameOverDto gameOverDto = new GameOverDto(whoMadeMove.getUsername(), room.getRoomState());
-            updateRoom(room);
+            sendUpdateMessage(room);
             redisRepository.clearMatchData(room);
             simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid,
                     new WebSocketEvent<>("GAME_OVER", gameOverDto));
@@ -158,7 +157,7 @@ public class RoomService {
             room.setActiveColor(Color.WHITE);
         }
 
-        private void updateRoom(Room room){
+        private void sendUpdateMessage(Room room){
             simpMessagingTemplate.convertAndSend("/topic/rooms/" + room.getUuid(), new WebSocketEvent<>("ROOM_INFO", room ));
         }
 

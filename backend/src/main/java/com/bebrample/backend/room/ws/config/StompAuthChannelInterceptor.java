@@ -32,8 +32,8 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel messageChannel) {
 
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
+        // TODO: check for blank websocket connections
         if (accessor != null && Objects.equals(StompCommand.CONNECT, accessor.getCommand())) {
-
             String token = (String) accessor.getSessionAttributes().get("jwt");
 
             if (token != null && jwtService.verifyToken(token)) {
