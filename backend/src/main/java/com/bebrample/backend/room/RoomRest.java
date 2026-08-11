@@ -1,7 +1,10 @@
 package com.bebrample.backend.room;
 
+import com.bebrample.backend.user.UserMapperImpl;
+import com.bebrample.backend.user.entity.LobbyParticipant;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,11 +18,15 @@ public class RoomRest {
 
     @PostMapping
     public Room createGame(){
-            return roomService.createRoom();
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        LobbyParticipant participant = (LobbyParticipant) auth.getPrincipal();
+            return roomService.createRoom(participant);
     }
 
     @PostMapping("{uuid}")
     public Room connectToRoom(@PathVariable String uuid){
-        return roomService.connectToRoom(uuid);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        LobbyParticipant participant = (LobbyParticipant) auth.getPrincipal();
+        return roomService.connectToRoom(uuid, participant);
     }
 }

@@ -32,27 +32,24 @@ public class RoomService {
     private final ApplicationEventPublisher eventPublisher;
     private final ChessService chessService;
 
-        public Room createRoom(){
-
-            LobbyParticipant user = getUserFromContext();
+        public Room createRoom(LobbyParticipant participant){
 
 
-            if(redisRepository.isPlaying(user.getId())) throw new RoomException("You already playing!");
 
-            UserLobbyDto dto = lobbyParticipantMapper.toUserLobbyDto(user);
+            if(redisRepository.isPlaying(participant.getId())) throw new RoomException("You already playing!");
+
+            UserLobbyDto dto = lobbyParticipantMapper.toUserLobbyDto(participant);
             Room room = new Room();
             room.setFirstPlayer(dto);
             room.setSecondPlayer(null);
             room.setRoomState(RoomState.WAITING_FOR_OPPONENT);
 
-            redisRepository.updateUser(room.getUuid(), user.getId());
+            redisRepository.updateUser(room.getUuid(), participant.getId());
             redisRepository.updateRoom(room);
             updateRoom(room);
             return room;
         }
-        public Room connectToRoom(String roomUuid){
-
-            LobbyParticipant user = getUserFromContext();
+        public Room connectToRoom(String roomUuid, LobbyParticipant user){
 
             if(redisRepository.isPlaying(user.getId())) {
                 throw new RoomException("User already playing other game");
@@ -62,8 +59,7 @@ public class RoomService {
             if(room.getSecondPlayer() != null) throw new RoomException("Room is already full");
             UserLobbyDto dto = lobbyParticipantMapper.toUserLobbyDto(user);
             room.setSecondPlayer(dto);
-
-            if(room.getSecondPlayer() != null) startGame(room);
+            startGame(room);
             log.info("{} <- second player", room.getSecondPlayer());
 
             redisRepository.updateRoom(room);
@@ -73,32 +69,38 @@ public class RoomService {
         }
 
         public void updateChessState(String roomUuid, MoveDto move, LobbyParticipant user){
-            UserLobbyDto whoMadeMove = null;
             Room room = redisRepository.getRoom(roomUuid);
             if(room == null) throw new ResourcesNotFoundException("Room is null");
+            if(room.getRoomState() != RoomState.ONGOING && room.getRoomState() != RoomState.CHECK) throw new RoomException("Game is finished. its over.");
+
+            UserLobbyDto whoMadeMove = null;
             Color atStart = room.getActiveColor();
 
-            if(room.getRoomState() != RoomState.ONGOING) throw new RoomException("Game is finished. its over.");
             String redisRoomUuid = redisRepository.getUserRoomUuid(user.getId());
-            if(redisRoomUuid == null) throw new ResourcesNotFoundException("You are not playing any game");
-            if(!redisRoomUuid.equals(roomUuid)) throw new RoomException("You are not playing this game");
+            if(!roomUuid.equals(redisRoomUuid)) throw new RoomException("You are not playing this game");
 
             if(user.getId().equals(room.getFirstPlayer().getId())) whoMadeMove = room.getFirstPlayer();
              else if(user.getId().equals(room.getSecondPlayer().getId())) whoMadeMove = room.getSecondPlayer();
 
-             if(whoMadeMove == null) throw new ResourcesNotFoundException("how");
+            if(whoMadeMove == null) throw new ResourcesNotFoundException("Player somehow not authorized");
             if(whoMadeMove.getColor() != room.getActiveColor()) throw new RoomException("Not your move");
 
             String fen = room.getCurrentFen();
             MakeMoveResponseDto responseMove = chessService.makeMove(fen, move.getFrom() + move.getTo());
-            switch (responseMove.getStatus()){
-                case "checkmate": room.setRoomState(RoomState.CHECKMATE);
-                case "stalemate": room.setRoomState(RoomState.STALEMATE);
-                case "draw": room.setRoomState(RoomState.DRAW);
-            }
-            if(responseMove.getStatus().equals("checkmate") || responseMove.getStatus().equals("stalemate") || responseMove.getStatus().equals("draw")){
-                endGame(roomUuid, whoMadeMove);
-                return;
+            if(responseMove.getStatus() != null) {
+                switch (responseMove.getStatus()) {
+                    case "checkmate":
+                        room.setRoomState(RoomState.CHECKMATE);
+                    case "stalemate":
+                        room.setRoomState(RoomState.STALEMATE);
+                    case "draw":
+                        room.setRoomState(RoomState.DRAW);
+                        break;
+                }
+                if(responseMove.getStatus().equals("checkmate") || responseMove.getStatus().equals("stalemate") || responseMove.getStatus().equals("draw")) {
+                    endGame(roomUuid, whoMadeMove);
+                    return;
+                }
             }
 
             room.setCurrentFen(responseMove.getFen());
@@ -154,14 +156,6 @@ public class RoomService {
             room.setRoomState(RoomState.ONGOING);
             room.setCurrentFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
             room.setActiveColor(Color.WHITE);
-        }
-
-
-
-
-        private LobbyParticipant getUserFromContext(){
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            return (LobbyParticipant) auth.getPrincipal();
         }
 
         private void updateRoom(Room room){
