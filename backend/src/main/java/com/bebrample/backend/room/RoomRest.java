@@ -2,6 +2,8 @@ package com.bebrample.backend.room;
 
 import com.bebrample.backend.user.UserMapperImpl;
 import com.bebrample.backend.user.entity.LobbyParticipant;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +19,7 @@ public class RoomRest {
     private final RoomService roomService;
 
     @PostMapping
+    @Operation(summary = "Create room")
     public Room createGame(){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         LobbyParticipant participant = (LobbyParticipant) auth.getPrincipal();
@@ -24,6 +27,7 @@ public class RoomRest {
     }
 
     @PostMapping("{uuid}")
+    @Operation(summary = "Connect to room")
     public Room connectToRoom(@PathVariable String uuid){
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         LobbyParticipant participant = (LobbyParticipant) auth.getPrincipal();
