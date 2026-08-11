@@ -1,7 +1,7 @@
 package com.bebrample.backend.match.dto;
 
 import com.bebrample.backend.entity.Result;
-import com.bebrample.backend.user.entity.UserLobbyDto;
+import com.bebrample.backend.user.dto.UserLobbyDto;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;

@@ -2,7 +2,7 @@ package com.bebrample.backend.room;
 
 import com.bebrample.backend.entity.Color;
 import com.bebrample.backend.entity.RoomState;
-import com.bebrample.backend.user.entity.UserLobbyDto;
+import com.bebrample.backend.user.dto.UserLobbyDto;
 import lombok.*;
 
 import java.util.Map;

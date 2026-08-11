@@ -7,7 +7,7 @@ import com.bebrample.backend.room.Room;
 import com.bebrample.backend.room.ws.dto.MoveDto;
 import com.bebrample.backend.user.UserRepository;
 import com.bebrample.backend.user.entity.User;
-import com.bebrample.backend.user.entity.UserLobbyDto;
+import com.bebrample.backend.user.dto.UserLobbyDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;

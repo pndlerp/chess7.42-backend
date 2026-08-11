@@ -1,5 +1,6 @@
 package com.bebrample.backend.user.entity;
 
+import com.bebrample.backend.user.dto.UserLobbyDto;
 import org.springframework.stereotype.Component;
 
 @Component
