@@ -12,6 +12,12 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=chess_backend
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U bebra -d chess_backend" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
 
   redis:
     image: redis:7-alpine
@@ -21,6 +27,31 @@ services:
       - "6379:6379"
     volumes:
       - chessredisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  backend:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/chess_backend
+      SPRING_DATASOURCE_USER: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+    depends_on:
+     postgres:
+       condition: service_healthy
+     redis:
+       condition: service_healthy
+    env_file:
+      .env
+
 
 volumes:
   chessdata:
