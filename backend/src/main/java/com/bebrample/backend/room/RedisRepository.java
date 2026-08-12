@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 
 @Repository
 @RequiredArgsConstructor
@@ -19,10 +20,14 @@ public class RedisRepository {
     private static final String CACHE_MOVES_KEY_PREFIX = "room:moves:";
     private static final String CACHE_LOBBY_PARTICIPANT_KEY_PREFIX = "user:";
 
-    public void updateUser(String roomUuid, Long participantId){
+    public void saveOrUpdateUser(String roomUuid, Long participantId){
+        String key = CACHE_LOBBY_PARTICIPANT_KEY_PREFIX + participantId;
+        Boolean exists = stringRedisTemplate.hasKey(key);
         stringRedisTemplate.opsForValue()
-                .set(CACHE_LOBBY_PARTICIPANT_KEY_PREFIX + participantId,
-                        roomUuid, Duration.ofMinutes(24));
+                .set(key, roomUuid, Duration.ofMinutes(24));
+        if(Boolean.FALSE.equals(exists)){
+            stringRedisTemplate.opsForSet().add("all_users", key);
+        }
     }
 
     public String getUserRoomUuid(Long userId){
@@ -31,7 +36,18 @@ public class RedisRepository {
     }
 
     public void deleteUser(Long userId){
-        stringRedisTemplate.delete(CACHE_LOBBY_PARTICIPANT_KEY_PREFIX + userId);
+        String key = CACHE_LOBBY_PARTICIPANT_KEY_PREFIX + userId;
+        stringRedisTemplate.delete(key);
+        stringRedisTemplate.opsForSet().remove("all_users", key);
+    }
+    public void deleteRoom(Room room) {
+        String key = CACHE_ROOM_KEY_PREFIX + room.getUuid();
+        redisRoomTemplate.delete(key);
+        stringRedisTemplate.opsForSet().remove("all_rooms", key);
+    }
+
+    public void deleteMoves(Room room) {
+        redisMoveDtoTemplate.delete(CACHE_MOVES_KEY_PREFIX + room.getUuid());
     }
 
     public List<MoveDto> getMoves(String roomUuid){
@@ -49,10 +65,13 @@ public class RedisRepository {
                     .get(CACHE_ROOM_KEY_PREFIX + roomUuid);
     }
 
-    public void updateRoom(Room room){
+    public void saveOrUpdateRoom(Room room){
+        String key = CACHE_ROOM_KEY_PREFIX + room.getUuid();
+        Boolean exists = redisRoomTemplate.hasKey(key);
         redisRoomTemplate.opsForValue()
-                .set(CACHE_ROOM_KEY_PREFIX + room.getUuid(),
-                        room, Duration.ofMinutes(24));
+                .set(key, room, Duration.ofMinutes(24));
+
+        if(Boolean.FALSE.equals(exists)) stringRedisTemplate.opsForSet().add("all_rooms", key);
     }
 
     public boolean isRoomNull(String roomUuid){
@@ -61,20 +80,22 @@ public class RedisRepository {
         return room == null;
     }
 
+    public List<Room> getAllRooms(){
+        Set<String> keys = stringRedisTemplate.opsForSet().members("all_rooms");
+        return redisRoomTemplate.opsForValue().multiGet(keys);
+    }
 
+    public List<String> getAllPlayingUsers(){
+        Set<String> keys = stringRedisTemplate.opsForSet().members("all_users");
+        return stringRedisTemplate.opsForValue().multiGet(keys);
+    }
 
     public void addMoveList(String roomUuid, MoveDto move){
         redisMoveDtoTemplate.opsForList().rightPush(CACHE_MOVES_KEY_PREFIX + roomUuid, move);
         redisMoveDtoTemplate.expire(CACHE_MOVES_KEY_PREFIX + roomUuid, Duration.ofMinutes(24));
     }
 
-    public void deleteRoom(Room room) {
-        redisRoomTemplate.delete(CACHE_ROOM_KEY_PREFIX + room.getUuid());
-    }
 
-    public void deleteMoves(Room room) {
-        redisMoveDtoTemplate.delete(CACHE_MOVES_KEY_PREFIX + room.getUuid());
-    }
 
     public void clearMatchData(Room room){
         deleteUser(room.getFirstPlayer().getId());

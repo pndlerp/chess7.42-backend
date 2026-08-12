@@ -10,6 +10,7 @@ import com.bebrample.backend.match.SaveMatchEvent;
 import com.bebrample.backend.room.ws.dto.GameOverDto;
 import com.bebrample.backend.room.ws.dto.MoveDto;
 import com.bebrample.backend.room.ws.dto.WebSocketEvent;
+import com.bebrample.backend.user.dto.UserLobbyDto;
 import com.bebrample.backend.user.entity.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,8 +43,8 @@ public class RoomService {
             room.setSecondPlayer(null);
             room.setRoomState(RoomState.WAITING_FOR_OPPONENT);
 
-            redisRepository.updateUser(room.getUuid(), participant.getId());
-            redisRepository.updateRoom(room);
+            redisRepository.saveOrUpdateUser(room.getUuid(), participant.getId());
+            redisRepository.saveOrUpdateRoom(room);
             sendUpdateMessage(room);
             return room;
         }
@@ -60,8 +61,8 @@ public class RoomService {
             startGame(room);
             log.info("{} <- second player", room.getSecondPlayer());
 
-            redisRepository.updateRoom(room);
-            redisRepository.updateUser(room.getUuid(), user.getId());
+            redisRepository.saveOrUpdateRoom(room);
+            redisRepository.saveOrUpdateUser(room.getUuid(), user.getId());
             sendUpdateMessage(room);
             return room;
         }
@@ -110,7 +111,7 @@ public class RoomService {
 //                return;
 //            }
             room.setActiveColor(atStart.toggle());
-            redisRepository.updateRoom(room);
+            redisRepository.saveOrUpdateRoom(room);
         }
 
         private void endGame(String roomUuid, UserLobbyDto whoMadeMove){
@@ -120,7 +121,7 @@ public class RoomService {
                 log.info("room is null");
                 return;
             }
-            redisRepository.updateRoom(room);
+            redisRepository.saveOrUpdateRoom(room);
             if(!(room.getSecondPlayer() != null && (room.getSecondPlayer().getId() > 0 && room.getFirstPlayer().getId() > 0))) {
                 log.info("game played with guest/not full lobby. prevent from saving");
                 //TODO: refactor db to add possibility to save games with guests
@@ -161,6 +162,11 @@ public class RoomService {
             simpMessagingTemplate.convertAndSend("/topic/rooms/" + room.getUuid(), new WebSocketEvent<>("ROOM_INFO", room ));
         }
 
-
+        public List<Room> findAllRooms(){
+            return redisRepository.getAllRooms();
+        }
+        public List<String> findAllPlayingUsers(){
+            return redisRepository.getAllPlayingUsers();
+        }
 
 }

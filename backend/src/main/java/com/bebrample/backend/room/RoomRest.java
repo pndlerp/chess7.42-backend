@@ -1,16 +1,13 @@
 package com.bebrample.backend.room;
 
-import com.bebrample.backend.user.UserMapperImpl;
 import com.bebrample.backend.user.entity.LobbyParticipant;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/rooms")
@@ -32,5 +29,16 @@ public class RoomRest {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         LobbyParticipant participant = (LobbyParticipant) auth.getPrincipal();
         return roomService.connectToRoom(uuid, participant);
+    }
+    @GetMapping("/all-rooms")
+    @Operation(summary = "Get all in-memory rooms")
+    public List<Room> getAllRooms(){
+        return roomService.findAllRooms();
+    }
+
+    @GetMapping("/all-playing-user")
+    @Operation(summary = "Get all in-memory users who are playing")
+    public List<String> getAllPlayingUsers(){
+        return roomService.findAllPlayingUsers();
     }
 }
