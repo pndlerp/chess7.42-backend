@@ -2,12 +2,15 @@ package com.bebrample.backend.common.config;
 
 import com.bebrample.backend.match.Match;
 import com.bebrample.backend.room.Room;
+import com.bebrample.backend.room.ws.dto.MessageDto;
 import com.bebrample.backend.room.ws.dto.MoveDto;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.serializer.*;
+import org.springframework.data.redis.serializer.JacksonJsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 import tools.jackson.databind.ObjectMapper;
 
 
@@ -64,4 +67,17 @@ public class RedisConfig {
         template.afterPropertiesSet();
         return template;
     }
+    @Bean
+    public RedisTemplate<String, MessageDto> redisMessageTemplate(RedisConnectionFactory redisConnectionFactory, ObjectMapper objectMapper) {
+        RedisTemplate<String, MessageDto> template = new RedisTemplate<>();
+        template.setConnectionFactory(redisConnectionFactory);
+
+        RedisSerializer<String> serializer = new StringRedisSerializer();
+        JacksonJsonRedisSerializer<MessageDto> jsonSerializer = new JacksonJsonRedisSerializer<>(objectMapper, MessageDto.class);
+        template.setKeySerializer(serializer);
+        template.setValueSerializer(jsonSerializer);
+        template.afterPropertiesSet();
+        return template;
+    }
+
 }

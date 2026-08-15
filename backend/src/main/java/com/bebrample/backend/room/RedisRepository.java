@@ -1,13 +1,14 @@
 package com.bebrample.backend.room;
 
+import com.bebrample.backend.room.ws.dto.MessageDto;
 import com.bebrample.backend.room.ws.dto.MoveDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Repository
 @RequiredArgsConstructor
@@ -15,35 +16,39 @@ public class RedisRepository {
     private final RedisTemplate<String,Room> redisRoomTemplate;
     private final RedisTemplate<String,String> stringRedisTemplate;
     private final RedisTemplate<String, MoveDto> redisMoveDtoTemplate;
+    private final RedisTemplate<String, MessageDto> redisMessageTemplate;
 
     private static final String CACHE_ROOM_KEY_PREFIX = "room:state:";
     private static final String CACHE_MOVES_KEY_PREFIX = "room:moves:";
-    private static final String CACHE_LOBBY_PARTICIPANT_KEY_PREFIX = "user:";
+    private static final String CACHE_PARTICIPANT_KEY_PREFIX = "user:";
+    private static final String CACHE_MESSAGES_KEY_PREFIX = "room:messages:";
+    private static final String CACHE_ALL_USERS_KEY_PREFIX = "all_users";
+    private static final String CACHE_ALL_ROOMS_KEY_PREFIX = "all_rooms";
 
     public void saveOrUpdateUser(String roomUuid, Long participantId){
-        String key = CACHE_LOBBY_PARTICIPANT_KEY_PREFIX + participantId;
+        String key = CACHE_PARTICIPANT_KEY_PREFIX + participantId;
         Boolean exists = stringRedisTemplate.hasKey(key);
         stringRedisTemplate.opsForValue()
                 .set(key, roomUuid, Duration.ofMinutes(24));
         if(Boolean.FALSE.equals(exists)){
-            stringRedisTemplate.opsForSet().add("all_users", key);
+            stringRedisTemplate.opsForSet().add(CACHE_ALL_USERS_KEY_PREFIX, key);
         }
     }
 
     public String getUserRoomUuid(Long userId){
         return stringRedisTemplate.opsForValue()
-                .get(CACHE_LOBBY_PARTICIPANT_KEY_PREFIX + userId);
+                .get(CACHE_PARTICIPANT_KEY_PREFIX + userId);
     }
 
     public void deleteUser(Long userId){
-        String key = CACHE_LOBBY_PARTICIPANT_KEY_PREFIX + userId;
+        String key = CACHE_PARTICIPANT_KEY_PREFIX + userId;
         stringRedisTemplate.delete(key);
-        stringRedisTemplate.opsForSet().remove("all_users", key);
+        stringRedisTemplate.opsForSet().remove(CACHE_ALL_USERS_KEY_PREFIX, key);
     }
     public void deleteRoom(Room room) {
         String key = CACHE_ROOM_KEY_PREFIX + room.getUuid();
         redisRoomTemplate.delete(key);
-        stringRedisTemplate.opsForSet().remove("all_rooms", key);
+        stringRedisTemplate.opsForSet().remove(CACHE_ALL_ROOMS_KEY_PREFIX, key);
     }
 
     public void deleteMoves(Room room) {
@@ -56,7 +61,7 @@ public class RedisRepository {
 
     public boolean isPlaying(Long userId){
         String player = stringRedisTemplate.opsForValue()
-                .get(CACHE_LOBBY_PARTICIPANT_KEY_PREFIX + userId);
+                .get(CACHE_PARTICIPANT_KEY_PREFIX + userId);
         return player != null;
     }
 
@@ -71,7 +76,7 @@ public class RedisRepository {
         redisRoomTemplate.opsForValue()
                 .set(key, room, Duration.ofMinutes(24));
 
-        if(Boolean.FALSE.equals(exists)) stringRedisTemplate.opsForSet().add("all_rooms", key);
+        if(Boolean.FALSE.equals(exists)) stringRedisTemplate.opsForSet().add(CACHE_ALL_ROOMS_KEY_PREFIX, key);
     }
 
     public boolean isRoomNull(String roomUuid){
@@ -81,13 +86,43 @@ public class RedisRepository {
     }
 
     public List<Room> getAllRooms(){
-        Set<String> keys = stringRedisTemplate.opsForSet().members("all_rooms");
-        return redisRoomTemplate.opsForValue().multiGet(keys);
+        Set<String> keys = stringRedisTemplate.opsForSet().members(CACHE_ALL_ROOMS_KEY_PREFIX);
+        if(keys == null) return Collections.emptyList();
+        List<Room> rooms = redisRoomTemplate.opsForValue().multiGet(keys);
+        List<Room> existingRoomsList = rooms.stream().filter(Objects::nonNull).collect(Collectors.toList());
+
+        Set<String> liveKeys = existingRoomsList.stream()
+                .map(Room::getUuid)
+                .collect(Collectors.toSet());
+
+        Set<String> staleKeys = new HashSet<>(keys);
+        staleKeys.removeAll(liveKeys);
+
+        if (!staleKeys.isEmpty())
+            stringRedisTemplate.opsForSet().remove(
+                    CACHE_ALL_ROOMS_KEY_PREFIX, staleKeys.toArray(new Object[0]));
+
+        return existingRoomsList;
     }
 
     public List<String> getAllPlayingUsers(){
-        Set<String> keys = stringRedisTemplate.opsForSet().members("all_users");
-        return stringRedisTemplate.opsForValue().multiGet(keys);
+        Set<String> keys = stringRedisTemplate.opsForSet().members(CACHE_ALL_USERS_KEY_PREFIX);
+        if(keys == null) return Collections.emptyList();
+        List<String> users = stringRedisTemplate.opsForValue().multiGet(keys);
+        List<String> existingUsersList = users.stream().filter(Objects::nonNull).collect(Collectors.toList());
+
+//        Set<String> liveKeys = existingUsersList.stream()
+//                .map(Room::getUuid)
+//                .collect(Collectors.toSet());
+//
+//        Set<String> staleKeys = new HashSet<>(keys);
+//        staleKeys.removeAll(liveKeys);
+//
+//        if (!staleKeys.isEmpty())
+//            stringRedisTemplate.opsForSet().remove(
+//                    CACHE_ALL_ROOMS_KEY_PREFIX, staleKeys.toArray(new Object[0]));
+
+        return existingUsersList;
     }
 
     public void addMoveList(String roomUuid, MoveDto move){
@@ -102,5 +137,19 @@ public class RedisRepository {
         deleteUser(room.getSecondPlayer().getId());
         deleteRoom(room);
         deleteMoves(room);
+        deleteMessages(room.getUuid());
+    }
+
+    public void saveMessage(String roomUuid, MessageDto message){
+        redisMessageTemplate.opsForList().rightPush(CACHE_MESSAGES_KEY_PREFIX + roomUuid, message);
+        redisMessageTemplate.expire(CACHE_MESSAGES_KEY_PREFIX + roomUuid, Duration.ofHours(1));
+    }
+
+    public List<MessageDto> getMessages(String roomUuid) {
+        return redisMessageTemplate.opsForList().range(CACHE_MESSAGES_KEY_PREFIX + roomUuid, 0, -1);
+    }
+
+    public void deleteMessages(String roomUuid){
+        redisMessageTemplate.delete(CACHE_MESSAGES_KEY_PREFIX + roomUuid);
     }
 }
