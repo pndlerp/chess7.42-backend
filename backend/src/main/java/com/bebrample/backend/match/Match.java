@@ -18,10 +18,10 @@ public class Match {
     private Long id;
     @Column(name = "room_uuid")
     private String roomUuid;
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "white_player_id")
     private User whitePlayer;
-    @ManyToOne()
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "black_player_id")
     private User blackPlayer;
     @Column(name = "final_fen")

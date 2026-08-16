@@ -25,15 +25,11 @@ public class MatchService {
     private final MatchRepository matchRepository;
     @Async
     public void saveMatch(Room room, List<MoveDto> moves){
-        Long whitePlayerId = (room.getFirstPlayer().getColor().equals(Color.WHITE) ? room.getFirstPlayer().getId() : room.getSecondPlayer().getId());
-        Long blackPlayerId = (Objects.equals(whitePlayerId, room.getFirstPlayer().getId())) ? room.getSecondPlayer().getId() : room.getFirstPlayer().getId();
-//        if(room.getFirstPlayer().getColor().equals(Color.WHITE)){
-//            whitePlayerId = room.getFirstPlayer().getId();
-//            blackPlayerId = room.getSecondPlayer().getId();
-//        } else {
-//             whitePlayerId = room.getSecondPlayer().getId();
-//             blackPlayerId = room.getFirstPlayer().getId();
-//        }
+        Long whitePlayerId = (room.getFirstPlayer().getColor().equals(Color.WHITE)
+                ? room.getFirstPlayer().getId() : room.getSecondPlayer().getId());
+        Long blackPlayerId = (Objects.equals(whitePlayerId, room.getFirstPlayer().getId()))
+                ? room.getSecondPlayer().getId() : room.getFirstPlayer().getId();
+
 
         Match match = new Match();
         match.setRoomUuid(room.getUuid());
@@ -65,7 +61,6 @@ public class MatchService {
         }
         return matchDtos;
     }
-
     public MatchResponseDto getMatch(Long id){
         Match m = matchRepository.findById(id).orElseThrow(() -> new ResourcesNotFoundException("not found"));
         return matchToMatchResponseDto(m);
