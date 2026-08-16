@@ -19,6 +19,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -49,12 +50,11 @@ public class RoomService {
             return room;
         }
         public Room connectToRoom(String roomUuid, LobbyParticipant user){
-
-            if(redisRepository.isPlaying(user.getId())) {
-                throw new RoomException("User already playing other game");
-            }
             Room room = redisRepository.getRoom(roomUuid);
-            if (room == null) throw new RoomException("Room is null");
+            if (room == null) throw new ResourcesNotFoundException("Room is null");
+            if(redisRepository.isPlaying(user.getId()) || Objects.equals(room.getFirstPlayer().getId(), user.getId())) {
+                throw new RoomException("User already playing this or other game");
+            }
             if(room.getSecondPlayer() != null) throw new RoomException("Room is already full");
             UserLobbyDto dto = lobbyParticipantMapper.toUserLobbyDto(user);
             room.setSecondPlayer(dto);
@@ -88,24 +88,21 @@ public class RoomService {
             MakeMoveResponseDto responseMove = chessService.makeMove(fen, move.getFrom() + move.getTo());
             if(responseMove.getGameStatus() != null) {
                 switch (responseMove.getGameStatus()) {
-                    case "checkmate":
-                        room.setRoomState(RoomState.CHECKMATE);
-                    case "stalemate":
-                        room.setRoomState(RoomState.STALEMATE);
-                    case "draw":
-                        room.setRoomState(RoomState.DRAW);
-                        break;
+                    case "checkmate" -> room.setRoomState(RoomState.CHECKMATE);
+                    case "stalemate" -> room.setRoomState(RoomState.STALEMATE);
+                    case "draw" -> room.setRoomState(RoomState.DRAW);
                 }
                 if(responseMove.getGameStatus().equals("checkmate") || responseMove.getGameStatus().equals("stalemate") || responseMove.getGameStatus().equals("draw")) {
                     endGame(roomUuid, whoMadeMove);
                     return;
                 }
             }
-
             room.setCurrentFen(responseMove.getFen());
             simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("MOVE", responseMove));
             sendUpdateMessage(room);
             redisRepository.addMoveList(roomUuid, move);
+            List<MoveDto> moves = redisRepository.getMoves(roomUuid);
+            simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("MATCH_MOVES", moves));
 //            if(responseMove.getIsCheckmate() || responseMove.getIsStalemate()){
 //                endGame(roomUuid, whoMadeMove);
 //                return;

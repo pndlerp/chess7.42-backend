@@ -15,8 +15,9 @@ public class RoomWebSocketService {
     private final RedisRepository redisRepository;
 
     public MessageDto saveMessage(String roomUuid, MessageDto message, LobbyParticipant user){
-        redisRepository.saveMessage(roomUuid, message);
-        return new MessageDto(message.getMessage(), user.getUsername());
+        MessageDto savedMessage = new MessageDto(message.getMessage(), user.getUsername());
+        redisRepository.saveMessage(roomUuid, savedMessage);
+        return savedMessage;
     }
 
     public List<MessageDto> getMessages(String roomUuid){

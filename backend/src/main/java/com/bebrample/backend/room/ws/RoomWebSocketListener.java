@@ -5,6 +5,7 @@ import com.bebrample.backend.entity.Role;
 import com.bebrample.backend.room.RedisRepository;
 import com.bebrample.backend.room.Room;
 import com.bebrample.backend.room.ws.dto.ConnectDto;
+import com.bebrample.backend.room.ws.dto.MoveDto;
 import com.bebrample.backend.room.ws.dto.WebSocketEvent;
 import com.bebrample.backend.user.entity.LobbyParticipant;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 
 import java.security.Principal;
+import java.util.List;
 
 @Component
 @Slf4j
@@ -47,9 +49,11 @@ public class RoomWebSocketListener {
         Room room = redisRepository.getRoom(roomUuid);
         if(room == null) throw new ResourcesNotFoundException("this Room isn't accessible anymore");
         redisRepository.saveOrUpdateUser(roomUuid, participant.getId());
+        List<MoveDto> moves = redisRepository.getMoves(roomUuid);
         ConnectDto dto = getConnectDto(participant, room);
         simpMessagingTemplate.convertAndSend(destination, new WebSocketEvent<>("CONNECTED", dto));
-        simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("ROOM_INFO", room ));
+        simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("ROOM_INFO", room));
+        simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("MATCH_MOVES", moves));
         roomWebSocketService.getMessages(roomUuid)
                 .forEach(message ->
                         simpMessagingTemplate
