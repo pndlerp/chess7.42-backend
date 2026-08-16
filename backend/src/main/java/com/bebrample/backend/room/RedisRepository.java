@@ -29,7 +29,7 @@ public class RedisRepository {
         String key = CACHE_PARTICIPANT_KEY_PREFIX + participantId;
         Boolean exists = stringRedisTemplate.hasKey(key);
         stringRedisTemplate.opsForValue()
-                .set(key, roomUuid, Duration.ofMinutes(24));
+                .set(key, roomUuid, Duration.ofHours(1));
         if(Boolean.FALSE.equals(exists)){
             stringRedisTemplate.opsForSet().add(CACHE_ALL_USERS_KEY_PREFIX, key);
         }
@@ -74,15 +74,9 @@ public class RedisRepository {
         String key = CACHE_ROOM_KEY_PREFIX + room.getUuid();
         Boolean exists = redisRoomTemplate.hasKey(key);
         redisRoomTemplate.opsForValue()
-                .set(key, room, Duration.ofMinutes(24));
+                .set(key, room, Duration.ofHours(1));
 
         if(Boolean.FALSE.equals(exists)) stringRedisTemplate.opsForSet().add(CACHE_ALL_ROOMS_KEY_PREFIX, key);
-    }
-
-    public boolean isRoomNull(String roomUuid){
-        Room room = redisRoomTemplate.opsForValue()
-                .get(CACHE_ROOM_KEY_PREFIX + roomUuid);
-        return room == null;
     }
 
     public List<Room> getAllRooms(){
@@ -105,29 +99,33 @@ public class RedisRepository {
         return existingRoomsList;
     }
 
-    public List<String> getAllPlayingUsers(){
+    public List<String> getAllPlayingUsers() {
         Set<String> keys = stringRedisTemplate.opsForSet().members(CACHE_ALL_USERS_KEY_PREFIX);
-        if(keys == null) return Collections.emptyList();
-        List<String> users = stringRedisTemplate.opsForValue().multiGet(keys);
-        List<String> existingUsersList = users.stream().filter(Objects::nonNull).collect(Collectors.toList());
+        if (keys == null || keys.isEmpty()) return Collections.emptyList();
 
-//        Set<String> liveKeys = existingUsersList.stream()
-//                .map(Room::getUuid)
-//                .collect(Collectors.toSet());
-//
-//        Set<String> staleKeys = new HashSet<>(keys);
-//        staleKeys.removeAll(liveKeys);
-//
-//        if (!staleKeys.isEmpty())
-//            stringRedisTemplate.opsForSet().remove(
-//                    CACHE_ALL_ROOMS_KEY_PREFIX, staleKeys.toArray(new Object[0]));
+        List<String> keyList = new ArrayList<>(keys);
+        List<String> userValues = stringRedisTemplate.opsForValue().multiGet(keyList);
+        if (userValues == null) return Collections.emptyList();
 
-        return existingUsersList;
+        List<String> existingUsers = new ArrayList<>();
+        List<String> staleKeys = new ArrayList<>();
+
+        for (int i = 0; i < keyList.size(); i++) {
+            String user = userValues.get(i);
+            if (user != null) existingUsers.add(user);
+             else staleKeys.add(keyList.get(i));
+        }
+        if (!staleKeys.isEmpty()) {
+            stringRedisTemplate.opsForSet().remove(
+                    CACHE_ALL_USERS_KEY_PREFIX,
+                    staleKeys.toArray(new Object[0]));
+        }
+        return existingUsers;
     }
 
     public void addMoveList(String roomUuid, MoveDto move){
         redisMoveDtoTemplate.opsForList().rightPush(CACHE_MOVES_KEY_PREFIX + roomUuid, move);
-        redisMoveDtoTemplate.expire(CACHE_MOVES_KEY_PREFIX + roomUuid, Duration.ofMinutes(24));
+        redisMoveDtoTemplate.expire(CACHE_MOVES_KEY_PREFIX + roomUuid, Duration.ofHours(1));
     }
 
 
