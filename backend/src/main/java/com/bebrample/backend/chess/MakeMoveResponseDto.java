@@ -13,7 +13,6 @@ import java.util.List;
 @ToString
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class MakeMoveResponseDto {
-    private String moveStatus;
     private String fen;
     private String sideToMove;
     private String gameStatus;
