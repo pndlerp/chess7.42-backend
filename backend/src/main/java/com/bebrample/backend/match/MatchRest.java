@@ -27,4 +27,9 @@ public class MatchRest {
         return matchService.getMatch(id);
     }
 
+    @GetMapping("matches")
+    @Operation(summary = "Get all avaiable matches")
+    public List<MatchResponseDto> getAllMatches(){
+        return matchService.getAllMatches();
+    }
 }

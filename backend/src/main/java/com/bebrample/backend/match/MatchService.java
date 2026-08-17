@@ -53,7 +53,7 @@ public class MatchService {
     }
 
     public List<MatchResponseDto> getPlayerMatches(Long id){
-        List<Match> matches = matchRepository.findMatchesByBlackPlayer_IdOrWhitePlayer_Id(id, id);
+        List<Match> matches = matchRepository.findMatchesByPlayerId(id);
         List<MatchResponseDto> matchDtos = new ArrayList<>();
         for(Match m : matches){
             MatchResponseDto dto = matchToMatchResponseDto(m);
@@ -78,5 +78,15 @@ public class MatchService {
                 m.getFinalFen(),
                 m.getPgn(),
                 m.getResult());
+    }
+
+    public List<MatchResponseDto> getAllMatches() {
+        List<Match> matches = matchRepository.findAll();
+        List<MatchResponseDto> matchDtos = new ArrayList<>();
+        for(Match m : matches){
+            MatchResponseDto dto = matchToMatchResponseDto(m);
+            matchDtos.add(dto);
+        }
+        return matchDtos;
     }
 }
