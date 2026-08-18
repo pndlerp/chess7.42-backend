@@ -6,8 +6,8 @@ import com.bebrample.backend.match.dto.MatchResponseDto;
 import com.bebrample.backend.room.Room;
 import com.bebrample.backend.room.ws.dto.MoveDto;
 import com.bebrample.backend.user.UserRepository;
-import com.bebrample.backend.user.entity.User;
 import com.bebrample.backend.user.dto.UserLobbyDto;
+import com.bebrample.backend.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ public class MatchService {
     private final UserRepository userRepository;
     private final MatchRepository matchRepository;
     @Async
-    public void saveMatch(Room room, List<MoveDto> moves){
+    public void saveMatch(Room room, List<MoveDto> moves, UserLobbyDto winner){
         Long whitePlayerId = (room.getFirstPlayer().getColor().equals(Color.WHITE)
                 ? room.getFirstPlayer().getId() : room.getSecondPlayer().getId());
         Long blackPlayerId = (Objects.equals(whitePlayerId, room.getFirstPlayer().getId()))
@@ -40,9 +40,8 @@ public class MatchService {
         match.setBlackPlayer(blackPlayer);
         match.setWhitePlayer(whitePlayer);
         match.setFinalFen(room.getCurrentFen());
-        match.setResult(null);
+        match.setResultBasedOnPlayer(winner.getColor());
         match.setPgn(generatePgn(moves));
-
         matchRepository.save(match);
     }
 

@@ -1,5 +1,6 @@
 package com.bebrample.backend.match;
 
+import com.bebrample.backend.entity.Color;
 import com.bebrample.backend.entity.Result;
 import com.bebrample.backend.user.entity.User;
 import jakarta.persistence.*;
@@ -28,8 +29,13 @@ public class Match {
     private String finalFen;
     @Column(name = "pgn")
     private String pgn;
+    @Enumerated(EnumType.STRING)
     @Column(name = "result")
     private Result result;
 
-
+    public void setResultBasedOnPlayer(Color winnerColor) {
+        if(winnerColor == Color.WHITE) result = Result.WHITE_WIN;
+        else if (winnerColor == Color.BLACK) result = Result.BLACK_WIN;
+        else result = Result.DRAW;
+    }
 }
