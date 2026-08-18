@@ -44,9 +44,18 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
 
-  backend:
+  frontend:
     build:
-      context: ./backend
+      context: ./chess7.42_frontend
+    profiles: ["prod"]
+    ports:
+      - "80:80"
+    restart: always
+    depends_on:
+      - backend
+
+  backend:
+    build: .
     profiles: ["test", "prod"]
     ports:
       - "8080:8080"
