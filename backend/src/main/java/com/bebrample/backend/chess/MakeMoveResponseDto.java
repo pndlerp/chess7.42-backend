@@ -11,10 +11,14 @@ import java.util.List;
 @AllArgsConstructor
 @Getter
 @ToString
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+//@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class MakeMoveResponseDto {
     private String fen;
-    private String sideToMove;
-    private String gameStatus;
-    private List<String> legalMoves;
+    private String side_to_move;
+    private String game_status;
+    private List<String> legal_moves;
+
+    public String getGameStatus(){
+        return game_status;
+    }
 }

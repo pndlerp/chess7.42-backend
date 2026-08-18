@@ -86,17 +86,7 @@ public class RoomService {
 
             String fen = room.getCurrentFen();
             MakeMoveResponseDto responseMove = chessService.makeMove(fen, move.getFrom() + move.getTo());
-            if(responseMove.getGameStatus() != null) {
-                switch (responseMove.getGameStatus()) {
-                    case "checkmate" -> room.setRoomState(RoomState.CHECKMATE);
-                    case "stalemate" -> room.setRoomState(RoomState.STALEMATE);
-                    case "draw" -> room.setRoomState(RoomState.DRAW);
-                }
-                if(responseMove.getGameStatus().equals("checkmate") || responseMove.getGameStatus().equals("stalemate") || responseMove.getGameStatus().equals("draw")) {
-                    endGame(roomUuid, whoMadeMove);
-                    return;
-                }
-            }
+            log.info(String.valueOf(responseMove));
             room.setCurrentFen(responseMove.getFen());
             simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("MOVE", responseMove));
             sendUpdateMessage(room);
@@ -107,32 +97,37 @@ public class RoomService {
 //                endGame(roomUuid, whoMadeMove);
 //                return;
 //            }
+            if(responseMove.getGameStatus() != null) {
+                switch (responseMove.getGameStatus()) {
+                    case "checkmate" -> room.setRoomState(RoomState.CHECKMATE);
+                    case "stalemate" -> room.setRoomState(RoomState.STALEMATE);
+                    case "draw" -> room.setRoomState(RoomState.DRAW);
+                }
+                redisRepository.saveOrUpdateRoom(room);
+                if(responseMove.getGameStatus().equals("checkmate") || responseMove.getGameStatus().equals("stalemate") || responseMove.getGameStatus().equals("draw")) {
+                    endGame(room, whoMadeMove);
+                    return;
+                }
+            }
             room.setActiveColor(atStart.toggle());
             redisRepository.saveOrUpdateRoom(room);
         }
 
-        private void endGame(String roomUuid, UserLobbyDto whoMadeMove){
-
-            Room room = redisRepository.getRoom(roomUuid);
-            if(room == null){
-                log.info("room is null");
-                return;
-            }
-            redisRepository.saveOrUpdateRoom(room);
+        private void endGame(Room room, UserLobbyDto whoMadeMove){
             if(!(room.getSecondPlayer() != null && (room.getSecondPlayer().getId() > 0 && room.getFirstPlayer().getId() > 0))) {
                 log.info("game played with guest/not full lobby. prevent from saving");
                 //TODO: refactor db to add possibility to save games with guests
                 return;
             }
             List<MoveDto> moves = redisRepository.getMoves(room.getUuid());
-            SaveMatchEvent event = new SaveMatchEvent(room, moves);
+            SaveMatchEvent event = new SaveMatchEvent(room, moves, whoMadeMove);
             eventPublisher.publishEvent(event);
             GameOverDto gameOverDto = new GameOverDto(whoMadeMove.getUsername(), room.getRoomState());
             sendUpdateMessage(room);
-            redisRepository.clearMatchData(room);
-            simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid,
+            //redisRepository.clearMatchData(room);
+            simpMessagingTemplate.convertAndSend("/topic/rooms/" + room.getUuid(),
                     new WebSocketEvent<>("GAME_OVER", gameOverDto));
-            log.info("saved game with room id:{}", roomUuid);
+            log.info("saved game with room id:{}", room.getUuid());
         }
 
 
@@ -149,6 +144,7 @@ public class RoomService {
         }
 
         private void startGame(Room room){
+            //TODO: refactor to use python service for start game
             randomizeSides(room);
             room.setRoomState(RoomState.ONGOING);
             room.setCurrentFen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
