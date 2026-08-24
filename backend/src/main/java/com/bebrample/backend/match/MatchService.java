@@ -2,14 +2,15 @@ package com.bebrample.backend.match;
 
 import com.bebrample.backend.common.exception.ResourcesNotFoundException;
 import com.bebrample.backend.entity.Color;
+import com.bebrample.backend.entity.RoomState;
 import com.bebrample.backend.match.dto.MatchResponseDto;
 import com.bebrample.backend.room.Room;
 import com.bebrample.backend.room.ws.dto.MoveDto;
 import com.bebrample.backend.user.UserRepository;
 import com.bebrample.backend.user.dto.UserLobbyDto;
 import com.bebrample.backend.user.entity.User;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -23,8 +24,8 @@ public class MatchService {
 
     private final UserRepository userRepository;
     private final MatchRepository matchRepository;
-    @Async
-    public void saveMatch(Room room, List<MoveDto> moves, UserLobbyDto winner){
+    @Transactional
+    public void saveMatch(Room room, List<MoveDto> moves, UserLobbyDto winner, RoomState state){
         Long whitePlayerId = (room.getFirstPlayer().getColor().equals(Color.WHITE)
                 ? room.getFirstPlayer().getId() : room.getSecondPlayer().getId());
         Long blackPlayerId = (Objects.equals(whitePlayerId, room.getFirstPlayer().getId()))
@@ -40,7 +41,7 @@ public class MatchService {
         match.setBlackPlayer(blackPlayer);
         match.setWhitePlayer(whitePlayer);
         match.setFinalFen(room.getCurrentFen());
-        match.setResultBasedOnPlayer(winner.getColor());
+        match.setResultBasedOnPlayer(winner.getColor(), state);
         match.setPgn(generatePgn(moves));
         matchRepository.save(match);
     }

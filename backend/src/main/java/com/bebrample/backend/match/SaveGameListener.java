@@ -12,6 +12,6 @@ public class SaveGameListener {
     @Async
     @EventListener
     public void handleSaveGame(SaveMatchEvent event){
-        matchService.saveMatch(event.getRoom(), event.getMoves(), event.getWinner());
+        matchService.saveMatch(event.getRoom(), event.getMoves(), event.getWinner(), event.getState());
     }
 }

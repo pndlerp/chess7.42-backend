@@ -1,5 +1,6 @@
 package com.bebrample.backend.match;
 
+import com.bebrample.backend.entity.RoomState;
 import com.bebrample.backend.room.Room;
 import com.bebrample.backend.room.ws.dto.MoveDto;
 import com.bebrample.backend.user.dto.UserLobbyDto;
@@ -13,9 +14,9 @@ import java.util.List;
 @Getter
 @Setter
 @AllArgsConstructor
-@NoArgsConstructor
 public class SaveMatchEvent {
     private Room room;
     private List<MoveDto> moves;
     private UserLobbyDto winner;
+    private RoomState state;
 }
