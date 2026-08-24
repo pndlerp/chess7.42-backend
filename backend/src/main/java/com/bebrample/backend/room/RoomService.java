@@ -97,17 +97,22 @@ public class RoomService {
 //                endGame(roomUuid, whoMadeMove);
 //                return;
 //            }
-            if(responseMove.getGameStatus() != null) {
                 switch (responseMove.getGameStatus()) {
-                    case "checkmate" -> room.setRoomState(RoomState.CHECKMATE);
-                    case "stalemate" -> room.setRoomState(RoomState.STALEMATE);
-                    case "draw" -> room.setRoomState(RoomState.DRAW);
-                }
-                redisRepository.saveOrUpdateRoom(room);
-                if(responseMove.getGameStatus().equals("checkmate") || responseMove.getGameStatus().equals("stalemate") || responseMove.getGameStatus().equals("draw")) {
-                    endGame(room, whoMadeMove);
-                    return;
-                }
+                    case "checkmate" -> {
+                        room.setRoomState(RoomState.CHECKMATE);
+                        endGame(room, whoMadeMove);
+                        return;
+                    }
+                    case "stalemate" -> {
+                        room.setRoomState(RoomState.STALEMATE);
+                        endGame(room, whoMadeMove);
+                        return;
+                    }
+                    case "draw" -> {
+                        room.setRoomState(RoomState.DRAW);
+                        endGame(room, whoMadeMove);
+                        return;
+                    }
             }
             room.setActiveColor(atStart.toggle());
             redisRepository.saveOrUpdateRoom(room);
@@ -120,14 +125,14 @@ public class RoomService {
                 return;
             }
             List<MoveDto> moves = redisRepository.getMoves(room.getUuid());
-            SaveMatchEvent event = new SaveMatchEvent(room, moves, whoMadeMove);
+            SaveMatchEvent event = new SaveMatchEvent(room, moves, whoMadeMove, room.getRoomState());
             eventPublisher.publishEvent(event);
             GameOverDto gameOverDto = new GameOverDto(whoMadeMove.getUsername(), room.getRoomState());
             sendUpdateMessage(room);
-            //redisRepository.clearMatchData(room);
             simpMessagingTemplate.convertAndSend("/topic/rooms/" + room.getUuid(),
                     new WebSocketEvent<>("GAME_OVER", gameOverDto));
             log.info("saved game with room id:{}", room.getUuid());
+            redisRepository.clearMatchData(room);
         }
 
 

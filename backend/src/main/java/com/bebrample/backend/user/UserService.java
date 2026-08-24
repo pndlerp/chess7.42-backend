@@ -37,7 +37,6 @@ public class UserService {
         userRepository.save(user);
         return userMapper.toUserResponse(user);
     }
-    @Transactional
     public String login(UserCreateDto dto){
         User user = userRepository.findUserByUsername(dto.getUsername())
                 .orElseThrow(() -> new ResourcesNotFoundException("User not found"));

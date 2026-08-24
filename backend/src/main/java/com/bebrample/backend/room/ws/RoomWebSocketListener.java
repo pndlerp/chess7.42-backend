@@ -22,6 +22,7 @@ import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 
 import java.security.Principal;
 import java.util.List;
+import java.util.Objects;
 
 @Component
 @Slf4j
@@ -47,18 +48,21 @@ public class RoomWebSocketListener {
         }
         LobbyParticipant participant = checkAndReturnLobbyParticipant(accessor);
         Room room = redisRepository.getRoom(roomUuid);
+
         if(room == null) throw new ResourcesNotFoundException("this Room isn't accessible anymore");
-        redisRepository.saveOrUpdateUser(roomUuid, participant.getId());
+        boolean isPlayer = (Objects.equals(room.getFirstPlayer().getId(), participant.getId()) ||
+                            Objects.equals(room.getSecondPlayer().getId(), participant.getId()));
+        if(isPlayer) redisRepository.saveOrUpdateUser(roomUuid, participant.getId());
+
         List<MoveDto> moves = redisRepository.getMoves(roomUuid);
         ConnectDto dto = getConnectDto(participant, room);
         simpMessagingTemplate.convertAndSend(destination, new WebSocketEvent<>("CONNECTED", dto));
-        simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("ROOM_INFO", room));
-        simpMessagingTemplate.convertAndSend("/topic/rooms/" + roomUuid, new WebSocketEvent<>("MATCH_MOVES", moves));
+        simpMessagingTemplate.convertAndSend(destination, new WebSocketEvent<>("ROOM_INFO", room));
+        simpMessagingTemplate.convertAndSend(destination, new WebSocketEvent<>("MATCH_MOVES", moves));
         roomWebSocketService.getMessages(roomUuid)
                 .forEach(message ->
                         simpMessagingTemplate
-                                .convertAndSend("/topic/rooms/" + room.getUuid(),
-                                        new WebSocketEvent<>("MESSAGE", message)));
+                                .convertAndSend(destination, new WebSocketEvent<>("MESSAGE", message)));
     }
 
     @EventListener
